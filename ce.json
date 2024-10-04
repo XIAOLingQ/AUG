@@ -1,0 +1,12 @@
+[
+  {
+    "instruction": "最后一次问",
+    "input": "user input (optional)",
+    "output": "最后一次答",
+    "system": "system prompt (optional)",
+    "history": [
+      ["第一次问", "第一次答"],
+      ["第二次问", "第二次答"]
+    ]
+  }
+]
