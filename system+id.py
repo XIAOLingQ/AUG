@@ -8,7 +8,7 @@ with open('E:\\GLM-UML\\2.json', 'r', encoding='utf-8') as file:
 for index, item in enumerate(data):
     item['id'] = index + 1  # 从1开始编号
     item['system'] = "需求建模使用plantuml格式"  # 修改'system'字段
-    item['input'] = "需求分析，需求建模，plantuml格式画uml图"
+    item['input'] = "需求分析，需求建模，plantuml格式画uml图，uml建模"
 
 
 # 将修改后的数据写回1.json文件
