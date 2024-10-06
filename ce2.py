@@ -1,40 +1,19 @@
-class UNet(nn.Module):
-    def __init__(self, T, num_labels, ch, ch_mult, num_res_blocks, dropout):
-        super().__init__()
-        tdim = ch * 4
-        self.time_embedding = TimeEmbedding(T, tdim)
-        self.makeup_embedding = VGGStyleFeatureExtractor()
+import json
 
-        self.head = nn.Conv2d(3, ch, kernel_size=3, stride=1, padding=1)
-        self.downblocks = nn.ModuleList()
-        chs = [ch]  # record output channel when dowmsample for upsample
-        now_ch = ch
-        for i, mult in enumerate(ch_mult):
-            out_ch = ch * mult
-            for _ in range(num_res_blocks):
-                self.downblocks.append(ResBlock(in_ch=now_ch, out_ch=out_ch, tdim=tdim, dropout=dropout))
-                now_ch = out_ch
-                chs.append(now_ch)
-            if i != len(ch_mult) - 1:
-                self.downblocks.append(nn.Conv2d(now_ch, now_ch, 3, stride=2, padding=1))
-                chs.append(now_ch)
+# 加载数据集，指定编码为 utf-8
+with open('2.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
 
-        self.middleblocks = nn.ModuleList([
-            ResBlock(now_ch, now_ch, tdim, dropout),
-            ResBlock(now_ch, now_ch, tdim, dropout),
-        ])
+# 遍历数据集并提取指令、输入和输出
+for item in data:
+    instruction = item['instruction']
+    input_text = item['input']
+    output_text = item['output']
+    his = item['history']
 
-        self.upblocks = nn.ModuleList()
-        for i, mult in reversed(list(enumerate(ch_mult))):
-            out_ch = ch * mult
-            for _ in range(num_res_blocks + 1):
-                self.upblocks.append(ResBlock(in_ch=chs.pop() + now_ch, out_ch=out_ch, tdim=tdim, dropout=dropout))
-                now_ch = out_ch
-            if i != 0:
-                self.upblocks.append(nn.ConvTranspose2d(now_ch, now_ch, 4, stride=2, padding=1))
-
-        self.tail = nn.Sequential(
-            nn.GroupNorm(32, now_ch),
-            nn.SiLU(),
-            nn.Conv2d(now_ch, 3, 3, stride=1, padding=1)
-        )
+    # 打印或处理数据
+    print(f"Instruction: {instruction}")
+    print(f"Input: {input_text}")
+    print(f"Output: {output_text}")
+    print(f"History: {his}")
+    print("----")
