@@ -1,2 +1,13 @@
 llm-chat-demo/chat-frontend/node_modules/
 .idea/
+.gitignore
+.gitattributes
+1.json
+2.json
+ce.json
+__pycache__/
+屏幕录制_2021-05-17_15.51.02.mp4
+ferrari2017.pdf
+数据汇总表.xlsx
+ce.py
+ce2.py
