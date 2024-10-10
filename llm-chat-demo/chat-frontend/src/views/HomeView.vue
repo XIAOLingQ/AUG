@@ -3,7 +3,7 @@
     <div class="home-right">
       <div class="right-version">
         <div class="llm-chat-demo">
-          <span class="chat-demo">GLM-UML</span><span class="version"> V1</span>
+          <span class="chat-demo">AUG</span><span class="version"> V1</span>
         </div>
       </div>
       <div class="right-body" :class="messages.length === 0 ? 'nodata' : ''" ref="messageContainer">
@@ -21,18 +21,56 @@
           <div v-else class="friend-message" v-html="message.content"></div>
         </div>
       </div>
-      <div class="right-input" @keyup.enter="handleSearch">
+     <div
+        class="input-container"
+        style="
+          width: 58%;
+          margin-right: 5px;
+          display: flex;
+          align-items: center;
+          border-radius: 15px;
+          background-color: #f5f5f5;
+          padding: 10px;
+          margin: 0 auto; /* 设置左右自动 margin 实现水平居中 */
+        "
+      >
+
         <!-- 输入框 -->
-        <el-input v-model="queryKeyword" placeholder="给GML-UML发送消息" class="input"></el-input>
-        <!-- 查询按钮 -->
-        <el-button v-if="!loading" type="primary" @click="handleSearch">
-          <img class="up-load" src="@/assets/上传.png">
-        </el-button>
-        <el-button v-if="loading" type="primary" @click="closeEventSource">
-          <img class="up-load" src="@/assets/等待.png">
-        </el-button>
+        <textarea
+          v-model="queryKeyword"
+          placeholder="请输入消息"
+          style="
+            flex-grow: 1;
+            border: none;
+            outline: none;
+            background-color: transparent;
+            padding: 5px;
+          "
+          rows="1"
+          @input="adjustTextareaHeight"
+        ></textarea>
+
+        <!-- 发送按钮 -->
+        <button
+          class="send-btn"
+          style="
+            border: none;
+            background-color: black;
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+          "
+        >
+          <img
+            src="@/assets/上传.png"
+            alt="send"
+            style="width: 20px; height: 20px"
+          />
+        </button>
       </div>
-      <div class="sec-notice">GLM-UML may also make mistakes. Please consider checking important information.</div>
+      <div class="sec-notice">AUG may also make mistakes. Please consider checking important information.</div>
     </div>
   </div>
 </template>

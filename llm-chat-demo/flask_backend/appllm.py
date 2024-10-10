@@ -67,6 +67,8 @@ def chat_with_llm():
     # 调用大模型后端
     response = call_large_model_backend(messages, query)
 
+    print(response)
+
     if response.get('status') == 200:
         response_json = response  # 解析大模型返回的JSON
         model_reply = response_json.get('response', '')  # 从模型返回的结果中获取回复
