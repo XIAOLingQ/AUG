@@ -150,7 +150,7 @@ export default {
 
         let friendMessage = sseMessage;
         // 创建一个新的 EventSource 实例
-        this.eventSource = new EventSource('llm/request?query=' + keyword);
+        this.eventSource = new EventSource('api/llm/request?query=' + keyword);
         // 设置消息事件监听器
         this.eventSource.onmessage = (event) => {          try {
             const dataObject = JSON.parse(event.data);
@@ -215,7 +215,7 @@ export default {
 
             // 发送 POST 请求到指定的 URL
             try {
-              const response = await fetch('get_uml', {
+              const response = await fetch('api/get_uml', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ export default {
 
     async resetMessages() {
       try {
-        const response = await fetch('reset_messages', {
+        const response = await fetch('api/reset_messages', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
