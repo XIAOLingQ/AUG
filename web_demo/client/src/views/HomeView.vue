@@ -13,7 +13,7 @@
           <div class="message-sender"
             :class="{ 'user-message': message.sender === 'User', 'friend-message': message.sender === '😎' }">
             <img v-if="message.sender === 'User'" src="@/assets/我的.png" alt="User Icon">
-            <img v-else-if="message.sender === '😎'" src="@/assets/我的2.png" alt="Friend Icon">
+            <img v-else-if="message.sender === ''" src="@/assets/我的2.png" alt="Friend Icon">
             <span class="message-sender-name" :class="message.sender === 'User' ? 'user-color' : 'friend-color'">{{
         message.sender }}:</span>
           </div>
@@ -84,6 +84,7 @@
   </div>
 </template>
 
+
 <script>
 import MarkdownIt from 'markdown-it';
 import markdownItFootnote from 'markdown-it-footnote';
@@ -95,13 +96,6 @@ import markdownItHighlightjs from 'markdown-it-highlightjs';
 
 export default {
   name: 'HomeView',
-  components: {},
-  computed: {
-    // 将 Markdown 文本渲染为 HTML
-    html() {
-      return this.md.render(this.message);
-    }
-  },
   data() {
     return {
       md: new MarkdownIt()
@@ -109,35 +103,35 @@ export default {
         .use(markdownItTaskLists, { enabled: true })
         .use(markdownItAbbr)
         .use(markdownItContainer, 'warning')
-        .use(markdownItHighlightjs, { hljs }), // 添加 markdown-it-highlightjs 插件
+        .use(markdownItHighlightjs, { hljs }),
       queryKeyword: '',
-      tempResult: {},
       loading: false,
       messages: [],
-      socket: null,
-      eventSource: null, // 添加事件源变量
-      stopIcon: '@/assets/等待.png',
-      uploadIcon: '@/assets/上传.png'
-    }
+      eventSource: null,
+    };
   },
   methods: {
+    generateUserId() {
+      // 检查 localStorage 中是否已经有 userId
+      let userId = localStorage.getItem('userId');
+      if (!userId) {
+        // 如果没有，生成一个新的唯一 ID，并存储在 localStorage
+        userId = 'user-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+        localStorage.setItem('userId', userId);
+      }
+      return userId;
+    },
+
     async handleSearch() {
-      // 如果正在加载中，则不执行新的搜索操作
       if (this.loading || !this.queryKeyword.trim()) {
-        return; // 防止重复触发或发送空消息
+        return;
       }
 
       const keyword = this.queryKeyword;
       this.loading = true;
+
       try {
-        let zxakey = "zxa";
-        // 初始化一个用于 SSE 的 message 对象
-        let sseMessage = {
-          orgcontent: '',
-          content: '',
-          sender: '😎',
-          zxakey: zxakey
-        };
+        const userId = this.generateUserId();  // 获取或生成用户 ID
 
         this.messages.push({
           content: keyword,
@@ -148,43 +142,54 @@ export default {
           this.scrollToBottom();
         });
 
-        let friendMessage = sseMessage;
-        // 创建一个新的 EventSource 实例
-        this.eventSource = new EventSource('api/llm/request?query=' + keyword);
-        // 设置消息事件监听器
-        this.eventSource.onmessage = (event) => {          try {
+        let sseMessage = {
+          orgcontent: '',
+          content: '',
+          sender: '😎'
+        };
+
+        // 如果已经有一个 EventSource 连接，先关闭它
+        if (this.eventSource) {
+          this.eventSource.close();
+        }
+
+        // 传递 `user_id` 参数
+        this.eventSource = new EventSource(`/api/llm/request?query=${encodeURIComponent(keyword)}&user_id=${userId}`);
+
+        this.eventSource.onmessage = (event) => {
+          try {
             const dataObject = JSON.parse(event.data);
-            // 判断是否为最后一个消息，如果是，则关闭事件源
+
             if (dataObject.message === 'done') {
               this.eventSource.close();
               this.loading = false;
             }
-            if (dataObject.message != 'done') {
-              // 累加接收到的数据到 friendMessage.orgcontent 中
-              friendMessage.orgcontent += dataObject.message.toLocaleString();
-              friendMessage.orgcontent = friendMessage.orgcontent.replace(/\*\*\s*([^*]*?)\s*(:\s*)?\*\*/g, '**$1$2**');
-              // 更新 friendMessage.content，这里假设 md.render 可以处理累加的字符串
-              friendMessage.content = this.md.render(friendMessage.orgcontent);
+
+            if (dataObject.message !== 'done') {
+              sseMessage.orgcontent += dataObject.message.toLocaleString();
+              sseMessage.content = this.md.render(sseMessage.orgcontent);
             }
+
             this.scrollToBottom();
           } catch (e) {
             console.error('Error parsing JSON:', e);
           }
         };
+
         this.messages.push(sseMessage);
         this.queryKeyword = ''; // 清空输入框
-        this.eventSource.onerror = error => {
+
+        this.eventSource.onerror = (error) => {
           console.error('EventSource failed:', error);
           this.eventSource.close();
+          this.loading = false;
         };
       } catch (error) {
-        console.error('发送消息时出错：', error);
-         this.loading = false; // 出错时停止加载
-      } finally {
-
+        console.error('Error during handleSearch:', error);
+        this.loading = false;
       }
     },
-    closeEventSource() {
+closeEventSource() {
       this.loading = false;
       if (this.eventSource) {
         this.eventSource.close();
@@ -295,7 +300,7 @@ export default {
     this.addCopyButtonToCodeBlocks();
   }
 
-}
+};
 </script>
 
 <style scoped>
@@ -522,3 +527,4 @@ export default {
   color: #ffffff;                  /* 设置文字颜色为深灰色 */
 }
 </style>
+

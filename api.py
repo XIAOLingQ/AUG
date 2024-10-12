@@ -1,88 +1,95 @@
-from fastapi import FastAPI, Request
-from pydantic import BaseModel
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
+import torch
+import uvicorn
+from fastapi import FastAPI, Request
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from pydantic import BaseModel
+from typing import List, Dict
+from fastapi.responses import JSONResponse
 
-# 设置 GPU 编号
+# 设置环境变量
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-MODEL_PATH = "/root/autodl-tmp/train/"
 
-# 检查设备
+# 模型路径
+MODEL_PATH = "/root/autodl-tmp/qwen/"
+
+# 检查是否使用 GPU
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# 加载分词器
+# 初始化 tokenizer 和模型
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
-
-# 加载模型，并启用 float16 加速
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_PATH,
-    torch_dtype=torch.float16,
-    low_cpu_mem_usage=True,
-    trust_remote_code=True,
-)
+    torch_dtype=torch.bfloat16,
+    device_map="cuda"
+).eval()
 
-# 将模型移到 GPU 上
-model = model.to(device).eval()
-
-# 使用 torch.compile 进行编译加速（适用于 PyTorch 2.0 及以上版本）
-try:
-    model = torch.compile(model)
-except Exception as e:
-    print(f"模型编译失败: {e}，降级使用未编译模型")
-
-# 定义对话历史数据结构
-class Message(BaseModel):
-    role: str
-    content: str
-
-# 定义请求体格式
-class ConversationRequest(BaseModel):
-    query: str
-    history: list[Message] = []
-
-# 初始化 FastAPI 应用
+# 创建 FastAPI 实例
 app = FastAPI()
 
-@app.post("/generate")
-async def generate_response(request_data: ConversationRequest):
-    # 获取请求中的 query 和对话历史
-    query = request_data.query
-    history = request_data.history
+# 定义请求体结构
+class ChatRequest(BaseModel):
+    prompt: str
+    history: List[Dict[str, str]]  # 历史记录，以 role 和 content 对象列表的形式
 
-    # 将当前用户输入加入对话历史
-    history.append({"role": "user", "content": query})
+# API 路由处理 POST 请求
+@app.post("/")
+async def generate_response(request: ChatRequest):
+    user_input = request.prompt
+    history = request.history if request.history else []  # 如果没有历史，则初始化为空列表
 
-    # 格式化对话为模型输入格式
-    formatted_history = ""
-    for turn in history:
-        if turn["role"] == "user":
-            formatted_history += f"用户: {turn['content']}\n"
-        else:
-            formatted_history += f"助手: {turn['content']}\n"
+    # 打印调试信息，查看历史记录
+    print(f"Received history: {history}")
 
-    # 定义最终输入
-    inputs = tokenizer(formatted_history, return_tensors="pt", add_special_tokens=True)
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    # 合并历史记录和当前输入
+    conversation_history = [
+        {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."}
+    ]
 
-    # 定义生成参数
-    gen_kwargs = {"max_length": 1000, "do_sample": True, "top_k": 5, "top_p": 0.95}
+    # 处理历史记录，使用 role 来保持一致性
+    if history:
+        for message in history:
+            # 检查 message 中的 role 类型，直接追加到 conversation_history 中
+            conversation_history.append({"role": message["role"], "content": message["content"]})
 
-    # 启用推理模式
-    with torch.inference_mode():
-        # 执行推理
-        outputs = model.generate(**inputs, **gen_kwargs)
+    # 添加当前用户的输入
+    conversation_history.append({"role": "user", "content": user_input})
 
-    # 获取生成结果并解码
-    outputs = outputs[:, inputs['input_ids'].shape[1]:]
-    result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # 打印调试信息，查看完整的对话历史
+    print(f"Updated conversation history: {conversation_history}")
 
-    # 将助手的响应加入对话历史
-    history.append({"role": "assistant", "content": result})
+    # 使用千问模型的 chat 模板生成输入文本
+    text = tokenizer.apply_chat_template(
+        conversation_history,
+        tokenize=False,
+        add_generation_prompt=True
+    )
 
-    # 返回生成结果和更新后的历史
-    return {"response": result, "history": history}
+    # 将生成的输入转换为模型可接受的格式
+    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
+    # 生成响应
+    gen_kwargs = {"max_new_tokens": 5000, "do_sample": True, "top_k": 1}
+    with torch.no_grad():
+        generated_ids = model.generate(**model_inputs, **gen_kwargs)
+        generated_ids = generated_ids[:, model_inputs.input_ids.shape[1]:]  # 截断输入部分
+
+    # 解码生成的文本
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+
+    history.append({"role": "assistant", "content": response})
+
+    # 打印调试信息，查看最新的历史记录
+    print(f"Updated history: {history}")
+
+    # 返回生成的响应和历史
+    return JSONResponse(content={
+        "status": 200,
+        "response": response,
+        "history": history
+    })
+
+# 代码内启动 FastAPI 服务器
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=6006)

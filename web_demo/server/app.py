@@ -1,17 +1,20 @@
+import time
 import requests
-from dashscope.api_entities.dashscope_response import Role
-from flask import Flask, jsonify, Response, json, request
+import schedule
+from flask import Flask, jsonify, request, json, Response
 from flask_cors import CORS
 from plantuml import PlantUML
+from datetime import datetime, timedelta
+import threading
 
 # 初始化Flask应用
 app = Flask(__name__)
 CORS(app, resources="/*")  # 允许跨域
 
-# 存储所有会话消息
-messages = []
+# 存储用户的会话消息（以 user_id 为键），并记录每个用户的最后活动时间
+user_messages = {}
+user_last_active = {}
 plantuml = PlantUML(url='http://27.25.158.240:50950/plantuml/png/')
-# 大模型后端 URL
 model_backend_url = "http://27.25.158.240:43787"
 
 
@@ -29,28 +32,23 @@ def get_uml():
 
     return jsonify({"url": url_uml})
 
-# 调用大模型的生成接口
+
+# 模型后端调用接口
 def call_large_model_backend(messages, query):
-    # 构造请求体
     payload = {
-        "prompt": query,    # 使用 "prompt" 来匹配 FastAPI 接口定义
-        "history": messages # 包含上下文的消息历史
+        "prompt": query,
+        "history": messages
     }
 
-    # 设置请求头
     headers = {
-        'Content-Type': 'application/json'  # 保持 JSON 格式
+        'Content-Type': 'application/json'
     }
 
-    # 发送请求到模型后端
     response = requests.post(model_backend_url, headers=headers, data=json.dumps(payload))
 
-    # 检查请求是否成功
     if response.status_code == 200:
-        # 返回结果，假设返回 JSON 格式
-        return response.json()  # 返回的是 JSON 对象，包含 "response" 和 "history"
+        return response.json()
     else:
-        # 错误处理
         print(f"请求失败，状态码: {response.status_code}")
         return None
 
@@ -58,40 +56,31 @@ def call_large_model_backend(messages, query):
 # 流式返回模型响应
 @app.route('/llm/request', methods=['GET'])
 def chat_with_llm():
-    global messages
     query = request.args.get('query', default='default query')
+    user_id = request.args.get('user_id', default='guest')
 
-    print(query)
+    if user_id not in user_messages:
+        user_messages[user_id] = []
 
-    # 新消息加入上下文
-    messages.append({"role": "user", "content": query})
+    # 记录用户的最后活动时间
+    user_last_active[user_id] = datetime.now()
 
-    # 调用大模型后端
-    response = call_large_model_backend(messages, query)
+    user_messages[user_id].append({"role": "user", "content": query})
 
-    print(response)
+    print(user_messages)
+
+    response = call_large_model_backend(user_messages[user_id], query)
 
     if response.get('status') == 200:
-        response_json = response  # 解析大模型返回的JSON
-        model_reply = response_json.get('response', '')  # 从模型返回的结果中获取回复
-        print(model_reply)
-        messages.append({"role": "assistant", "content": model_reply})
+        model_reply = response.get('response', '')
+
+        user_messages[user_id].append({"role": "assistant", "content": model_reply})
 
         def chat():
-            print(query)
-            messages.append({'role': Role.USER, 'content': query})
-            whole_message = model_reply
-
             part_message = model_reply
-            whole_message += part_message
-            print(part_message, end='')
-            json_data = json.dumps({"message": part_message})
-            yield f"data: {json_data}\n\n"
-
-            messages.append({'role': 'assistant', 'content': whole_message})
-            json_data = json.dumps({"message": 'done'})
-            yield f"data: {json_data}\n\n"
-            print('结束')
+            yield f"data: {json.dumps({'message': part_message})}\n\n"
+            user_messages[user_id].append({'role': 'assistant', 'content': part_message})
+            yield f"data: {json.dumps({'message': 'done'})}\n\n"
 
         headers = {
             'Content-Type': 'text/event-stream',
@@ -100,15 +89,61 @@ def chat_with_llm():
         }
         return Response(chat(), content_type='text/event-stream', headers=headers)
     else:
-        return jsonify({"error": f"Failed to call model backend. Status code: {response.get('status')}"}, 500)
+        return jsonify({"error": "Failed to call model backend."}), 500
 
-# 重置消息记录
+
+# 重置特定用户的消息记录
 @app.route('/reset_messages', methods=['POST'])
 def reset_messages():
-    global messages
-    messages = []  # 清空消息记录
-    return jsonify({"message": "Messages reset successfully."}), 200
+    user_id = request.json.get('user_id')
+    if user_id and user_id in user_messages:
+        user_messages[user_id] = []  # 清空特定用户的消息记录
+        return jsonify({"message": f"Messages for user {user_id} reset successfully."}), 200
+    else:
+        return jsonify({"error": "User ID not provided or not found."}), 400
+
+
+# 定期清理超过10分钟无活动的用户消息记录
+def clear_inactive_users():
+    global user_messages, user_last_active
+    now = datetime.now()
+    inactive_users = []
+
+    for user_id, last_active in user_last_active.items():
+        if now - last_active > timedelta(minutes=10):
+            inactive_users.append(user_id)
+
+    for user_id in inactive_users:
+        del user_messages[user_id]
+        del user_last_active[user_id]
+        print(f"用户 {user_id} 的消息记录已删除，由于10分钟无活动")
+
+
+# 使用 schedule 每天定时清理所有用户消息记录
+def clear_all_messages():
+    global user_messages
+    user_messages = {}  # 清空所有用户的消息记录
+    print("所有用户的消息记录已清除")
+
+
+# 使用 schedule 定时任务
+schedule.every().day.at("00:00").do(clear_all_messages)
+
+# 每分钟检查一次是否有无活动超过10分钟的用户
+schedule.every(1).minutes.do(clear_inactive_users)
+
 
 # 启动Flask应用
 if __name__ == '__main__':
+    # 在 Flask 主线程中启动定期任务
+    def run_scheduler():
+        while True:
+            schedule.run_pending()  # 运行所有已安排的任务
+            time.sleep(1)
+
+    # 启动定时任务调度器
+    scheduler_thread = threading.Thread(target=run_scheduler)
+    scheduler_thread.start()
+
+    # 启动Flask服务器
     app.run(debug=True, host='0.0.0.0', port=5000)
