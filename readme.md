@@ -9,7 +9,7 @@
 ## 关于我们
 
 <p>
-  <img src="https://github.com/liilljiy.png" width="50" height="50" style="vertical-align: middle; border-radius: 50%;">
+  <img src="assets/profile.png" width="50" height="50" style="vertical-align: middle;">
   武汉纺织大学 卢佳
   <span style="vertical-align: middle; margin-left: 10px;">
     Email: <a href="mailto:2204240222@mail.wtu.edu.cn">2204240222@mail.wtu.edu.cn</a>
