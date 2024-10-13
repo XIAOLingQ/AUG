@@ -4,6 +4,7 @@
 
 ### 模型部署
 
+
 ### web部署
 
 ## 关于我们
@@ -15,7 +16,18 @@
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
       武汉纺织大学 卢佳<br>
-      Email:  <a href="mailto:2204240222@mail.wtu.edu.cn">2204240222@mail.wtu.edu.cn</a>
+      Email: <a href="mailto:2204240222@mail.wtu.edu.cn">2204240222@mail.wtu.edu.cn</a>
+    </td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td style="width: 30%;">
+      <img src="./assets/about/lj.png">
+    </td>
+    <td style="vertical-align: middle; padding-left: 10px;">
+      武汉纺织大学 卢佳<br>
+      Email: <a href="mailto:2204240222@mail.wtu.edu.cn">2204240222@mail.wtu.edu.cn</a>
     </td>
   </tr>
 </table>
