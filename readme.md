@@ -10,8 +10,8 @@
 
 <table>
   <tr>
-    <td style="width: 10%; text-align: center;">
-      <img src="https://github.com/liilljiy.png" style="max-width: 100%; height: auto;" alt="图片">
+    <td style="width: 20%;">
+      <img src="https://github.com/liilljiy.png" class="responsive-image" alt="图片">
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
       武汉纺织大学 卢佳<br>
@@ -19,7 +19,7 @@
     </td>
   </tr>
 </table>
-
+<link rel="stylesheet" href="./assets/about/sy.css">
 
 ## Star History
 
