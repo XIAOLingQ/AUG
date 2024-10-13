@@ -15,7 +15,7 @@
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
       武汉纺织大学 卢佳<br>
-      Email: <a href="mailto:2204240222@mail.wtu.edu.cn">2204240222@mail.wtu.edu.cn</a>
+      Email:  <a href="mailto:2204240222@mail.wtu.edu.cn">2204240222@mail.wtu.edu.cn</a>
     </td>
   </tr>
 </table>
