@@ -96,6 +96,7 @@ def chat_with_llm():
 @app.route('/reset_messages', methods=['POST'])
 def reset_messages():
     user_id = request.json.get('user_id')
+    print(user_id)
     if user_id and user_id in user_messages:
         user_messages[user_id] = []  # 清空特定用户的消息记录
         return jsonify({"message": f"Messages for user {user_id} reset successfully."}), 200

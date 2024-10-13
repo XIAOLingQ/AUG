@@ -15,15 +15,13 @@
             <img v-if="message.sender === 'User'" src="@/assets/我的.png" alt="User Icon">
             <img v-else-if="message.sender === ''" src="@/assets/我的2.png" alt="Friend Icon">
             <span class="message-sender-name" :class="message.sender === 'User' ? 'user-color' : 'friend-color'">{{
-        message.sender }}:</span>
+              message.sender }}:</span>
           </div>
           <div v-if="message.sender === 'User'" class="user-message">{{ message.content }}</div>
           <div v-else class="friend-message" v-html="message.content"></div>
         </div>
       </div>
-     <div
-        class="input-container"
-        style="
+      <div class="input-container" style="
           width: 58%;
           margin-right: 5px;
           display: flex;
@@ -32,29 +30,19 @@
           background-color: #f5f5f5;
           padding: 10px;
           margin: 0 auto; /* 设置左右自动 margin 实现水平居中 */
-        "
-      >
+        ">
 
         <!-- 输入框 -->
-        <textarea
-          v-model="queryKeyword"
-          placeholder="请输入消息"
-          style="
+        <textarea v-model="queryKeyword" placeholder="请输入消息" style="
             flex-grow: 1;
             border: none;
             outline: none;
             background-color: transparent;
             padding: 5px;
-          "
-          rows="1"
-          @input="adjustTextareaHeight"
-        ></textarea>
+          " rows="1" @input="adjustTextareaHeight"></textarea>
 
         <!-- 发送按钮 -->
-          <button
-          class="send-btn"
-          @click="handleSearch"
-          style="
+        <button class="send-btn" @click="handleSearch" style="
             border: none;
             background-color: black;
             color: white;
@@ -63,20 +51,9 @@
             height: 40px;
             margin-left: 10px;
             cursor: pointer;
-          "
-        >
-          <img
-            v-if="!loading"
-            src="@/assets/上传.png"
-            alt="send"
-            style="width: 20px; height: 20px"
-          />
-          <img
-            v-else
-            src="@/assets/等待.png"
-            alt="loading"
-            style="width: 20px; height: 20px"
-          />
+          ">
+          <img v-if="!loading" src="@/assets/上传.png" alt="send" style="width: 20px; height: 20px" />
+          <img v-else src="@/assets/等待.png" alt="loading" style="width: 20px; height: 20px" />
         </button>
       </div>
       <div class="sec-notice">AUG may also make mistakes. Please consider checking important information.</div>
@@ -189,7 +166,7 @@ export default {
         this.loading = false;
       }
     },
-closeEventSource() {
+    closeEventSource() {
       this.loading = false;
       if (this.eventSource) {
         this.eventSource.close();
@@ -233,18 +210,18 @@ closeEventSource() {
                 const data = await response.json();
                 const previewUrl = data.url;  // 服务器返回的图片预览链接
                 window.open(previewUrl);
-              //
-              //   // 打开一个新窗口并展示生成的 UML 图像
-              //   const newWindow = window.open();
-              //   if (newWindow) {
-              //     // 设置图片大小为 80% 的宽度，高度自适应
-              // //     newWindow.document.write(`
-              // //   <img src="${previewUrl}" alt="预览图" style="width: 30%; height: auto; display: block; margin: 0 auto;">
-              // // `);
-              //     //newWindow.document.title = "UML 预览图";  // 设置新窗口的标题
-              //   } else {
-              //     console.error('新窗口无法打开。请检查浏览器的弹窗设置。');
-              //   }
+                //
+                //   // 打开一个新窗口并展示生成的 UML 图像
+                //   const newWindow = window.open();
+                //   if (newWindow) {
+                //     // 设置图片大小为 80% 的宽度，高度自适应
+                // //     newWindow.document.write(`
+                // //   <img src="${previewUrl}" alt="预览图" style="width: 30%; height: auto; display: block; margin: 0 auto;">
+                // // `);
+                //     //newWindow.document.title = "UML 预览图";  // 设置新窗口的标题
+                //   } else {
+                //     console.error('新窗口无法打开。请检查浏览器的弹窗设置。');
+                //   }
               } else {
                 console.error('Failed to generate preview:', response.statusText);
               }
@@ -268,24 +245,21 @@ closeEventSource() {
     },
 
     async resetMessages() {
+      const userId = this.generateUserId();  // 获取或生成用户 ID
+      console.log(userId);
       try {
         const response = await fetch('api/reset_messages', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          body: JSON.stringify({ user_id: userId })
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("请求成功:", data);
-        } else {
-          console.error('请求失败:', response.statusText);
-        }
+        // Handle response here
       } catch (error) {
-        console.error('请求错误:', error.message);
-        console.error('更多错误信息:', error);
+        console.error('Error:', error);
       }
+
     }
 
   },
@@ -338,9 +312,7 @@ closeEventSource() {
 }
 
 .right-version {
-  //width: 60%;
   margin: auto;
-  //background-color: #F9FFD8;
   height: 5%;
   display: flex;
   justify-content: start;
@@ -428,9 +400,7 @@ closeEventSource() {
   margin-right: 5px;
 }
 
-.up-load {
-  //width: 30px;
-}
+
 
 ::v-deep .el-button {
   padding: 5px 6px;
@@ -524,7 +494,7 @@ closeEventSource() {
   /* 保持代码块的背景色 */
   position: relative;
   /* 确保复制按钮能够绝对定位 */
-  color: #ffffff;                  /* 设置文字颜色为深灰色 */
+  color: #ffffff;
+  /* 设置文字颜色为深灰色 */
 }
 </style>
-

@@ -38,8 +38,6 @@ async def generate_response(request: ChatRequest):
     user_input = request.prompt
     history = request.history if request.history else []  # 如果没有历史，则初始化为空列表
 
-    # 打印调试信息，查看历史记录
-    print(f"Received history: {history}")
 
     # 合并历史记录和当前输入
     conversation_history = [
