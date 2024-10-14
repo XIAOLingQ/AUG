@@ -1,17 +1,26 @@
+<img src="./assets/系统框架.jpeg">
+
+我们的预训练模型地址：[afedf/AUG · Hugging Face](https://huggingface.co/afedf/AUG)
+
 ## 摘要
-
-
 
 ## 使用方法
 
 ### 模型部署
 
-可以从我们的huggingface仓库中下载我们的预训练权重模型将他们放入/models文件夹中，我们提供了API部署方式的代码以符合我们项目的需要；如果需要终端交互可以使用官网提供的方法。
+可以从我们的huggingface仓库中下载我们的预训练权重模型将他们放入./models文件夹中，我们提供了API部署方式的代码以符合我们项目的需要；如果需要终端交互可以使用官网提供的方法。
 
 ```1
 cd llm_serve
 pip install -r requirements.txt
 python api.py
+```
+
+### PlantUML服务器部署
+
+```puml
+cd puml_serve
+java -jar plantuml.jar -picoweb:8888  //更换运行的端口
 ```
 
 ### web部署
@@ -26,20 +35,22 @@ npm install
 npm run serve
 ```
 
-如果要修改请求后端的url，修改文件./web_demo/client/vue.config.js
+如果要修改请求后端的url，修改文件./web_demo/client/vue.config.js 的第六行
 
 ```vue.config.js
 target: 'http://27.25.158.240:21561', // 你的后端接口地址
 //替换为你的后端地址
 ```
 
-### 后端
+#### 后端
 
 ```serve
 cd web_demo/server
 pip install -r requirements.txt
 python app.py
 ```
+
+如果要修改请求大模型的地址或请求plantUML服务器的地址，修改文件app.py的第17行和第18行。
 
 ## 关于我们
 

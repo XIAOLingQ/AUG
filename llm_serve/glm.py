@@ -23,12 +23,13 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype=torch.bfloat16,
     low_cpu_mem_usage=True,
     trust_remote_code=True,
-    device_map="auto"
-).eval()
+    device_map="auto"  # 使用 accelerate 进行设备自动分配
+).eval()  # 删除 .to(device) 调用
 
 # 创建 FastAPI 实例
 app = FastAPI()
 gen_kwargs = {"max_length": 2500, "do_sample": True, "top_k": 1}
+
 # 定义请求体结构
 class ChatRequest(BaseModel):
     prompt: str
@@ -61,10 +62,11 @@ async def generate_response(request: ChatRequest):
                                            return_dict=True
                                            )
 
+    # 移动 inputs 到模型所在的设备（accelerate 会处理设备分配）
+    inputs = {key: value.to(device) for key, value in inputs.items()}
+
     # 生成响应
     gen_kwargs = {"max_new_tokens": 5000, "do_sample": True, "top_k": 1}
-
-
 
     with torch.no_grad():
         outputs = model.generate(**inputs, **gen_kwargs)
@@ -72,7 +74,6 @@ async def generate_response(request: ChatRequest):
 
     # 解码生成的文本
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
 
     history.append({"role": "assistant", "content": response})
 
