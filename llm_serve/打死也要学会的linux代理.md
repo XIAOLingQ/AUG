@@ -5,7 +5,7 @@
 * 下载V2ray ，可以本地下载再上传到linux服务器
 
 ```wget
-wget https://github.com/v2fly/v2ray-core/releases/download/v5.20.0/v2ray-linux-64.zip
+wget https://github.com/v2fly/v2ray-core/releases/download/v4.22.0/v2ray-linux-64.zip
 ```
 
 * 解压安装包:
