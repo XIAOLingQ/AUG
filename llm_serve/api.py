@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # 模型路径
-MODEL_PATH = "/root/autodl-tmp/qwen/"
+MODEL_PATH = "/root/autodl-tmp/AUG/"
 
 # 检查是否使用 GPU
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -21,11 +21,14 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_PATH,
     torch_dtype=torch.bfloat16,
-    device_map="cuda"
-).eval()
+    low_cpu_mem_usage=True,
+    trust_remote_code=True,
+    device_map="auto"  # 使用 accelerate 进行设备自动分配
+).eval()  # 删除 .to(device) 调用
 
 # 创建 FastAPI 实例
 app = FastAPI()
+gen_kwargs = {"max_length": 2500, "do_sample": True, "top_k": 1}
 
 # 定义请求体结构
 class ChatRequest(BaseModel):
@@ -38,10 +41,12 @@ async def generate_response(request: ChatRequest):
     user_input = request.prompt
     history = request.history if request.history else []  # 如果没有历史，则初始化为空列表
 
+    # 打印调试信息，查看历史记录
+    print(f"Received history: {history}")
 
     # 合并历史记录和当前输入
     conversation_history = [
-        {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."}
+        {"role": "system", "content": "你是AUG需求助手，你的任务是协助开发者进行需求建模。"}
     ]
 
     # 处理历史记录，使用 role 来保持一致性
@@ -50,31 +55,25 @@ async def generate_response(request: ChatRequest):
             # 检查 message 中的 role 类型，直接追加到 conversation_history 中
             conversation_history.append({"role": message["role"], "content": message["content"]})
 
-    # 添加当前用户的输入
-    conversation_history.append({"role": "user", "content": user_input})
+    inputs = tokenizer.apply_chat_template(conversation_history,
+                                           add_generation_prompt=True,
+                                           tokenize=True,
+                                           return_tensors="pt",
+                                           return_dict=True
+                                           )
 
-    # 打印调试信息，查看完整的对话历史
-    print(f"Updated conversation history: {conversation_history}")
-
-    # 使用千问模型的 chat 模板生成输入文本
-    text = tokenizer.apply_chat_template(
-        conversation_history,
-        tokenize=False,
-        add_generation_prompt=True
-    )
-
-    # 将生成的输入转换为模型可接受的格式
-    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+    # 移动 inputs 到模型所在的设备（accelerate 会处理设备分配）
+    inputs = {key: value.to(device) for key, value in inputs.items()}
 
     # 生成响应
     gen_kwargs = {"max_new_tokens": 5000, "do_sample": True, "top_k": 1}
+
     with torch.no_grad():
-        generated_ids = model.generate(**model_inputs, **gen_kwargs)
-        generated_ids = generated_ids[:, model_inputs.input_ids.shape[1]:]  # 截断输入部分
+        outputs = model.generate(**inputs, **gen_kwargs)
+        outputs = outputs[:, inputs['input_ids'].shape[1]:]
 
     # 解码生成的文本
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     history.append({"role": "assistant", "content": response})
 

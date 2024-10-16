@@ -101,7 +101,7 @@ def reset_messages():
         user_messages[user_id] = []  # 清空特定用户的消息记录
         return jsonify({"message": f"Messages for user {user_id} reset successfully."}), 200
     else:
-        return jsonify({"error": "User ID not provided or not found."}), 400
+        return jsonify({"error": "User ID not provided or not found."}), 200
 
 
 # 定期清理超过10分钟无活动的用户消息记录
