@@ -8,8 +8,8 @@
 - 视频地址为：[https://www.bilibili.com/video/BV1vPyTY8Eda/](https://www.bilibili.com/video/BV1vPyTY8Eda/)
 
 ## 工具功能
+https://github.com/XIAOLingQ/AUG/blob/master/assets/%E6%BC%94%E7%A4%BA.mp4
 
-[https://github.com/XIAOLingQ/AUG/blob/master/assets/%E6%BC%94%E7%A4%BA.mp4](https://github.com/XIAOLingQ/AUG/blob/master/assets/%E6%BC%94%E7%A4%BA.mp4)
 <img src="./assets/图片1.jpg">
 
 ## 使用方法
