@@ -15,7 +15,7 @@ CORS(app, resources="/*")  # 允许跨域
 user_messages = {}
 user_last_active = {}
 plantuml = PlantUML(url='http://27.25.158.240:50950/plantuml/png/')
-model_backend_url = "http://27.25.158.240:43787"
+model_backend_url = "http:127.0.0.1:6006"
 
 
 @app.route('/get_uml', methods=['POST'])
