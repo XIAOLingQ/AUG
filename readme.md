@@ -10,10 +10,6 @@
   <source src="./assets/演示.mp4" type="video/webm" />
 </video>
 
-</video>
-
-
-
 <img src="./assets/图片1.jpg">
 
 ## 使用方法
