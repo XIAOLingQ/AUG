@@ -24,9 +24,4 @@ cd /root/autodl-tmp/bushu/AUG/puml_serve/
 java -jar plantuml.jar -picoweb:8888 &
 sleep 2
 
-# Frp service for port forwarding (frontend 8080, PlantUML 8888, backend 5000)
-echo "Starting frp service for port forwarding..."
-cd /root/autodl-tmp/ChmlFrp-0.51.2_240715_linux_amd64/
-./frpc -c frpc.ini &
-
 echo "All services started."
