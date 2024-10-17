@@ -6,9 +6,9 @@
 
 ## 工具功能
 
-<video controls width="50000">
+[<video controls width="50000">
   <source src="./assets/演示.mp4" type="video/webm" />
-</video>
+</video>](https://github.com/XIAOLingQ/AUG/blob/master/assets/%E6%BC%94%E7%A4%BA.mp4)
 
 <img src="./assets/图片1.jpg">
 
