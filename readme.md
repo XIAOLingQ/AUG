@@ -9,7 +9,7 @@
 
 ## 工具功能
 
-https://github.com/XIAOLingQ/AUG/blob/master/assets/%E6%BC%94%E7%A4%BA.mp4
+[https://github.com/XIAOLingQ/AUG/blob/master/assets/%E6%BC%94%E7%A4%BA.mp4](https://github.com/XIAOLingQ/AUG/blob/master/assets/%E6%BC%94%E7%A4%BA.mp4)
 <img src="./assets/图片1.jpg">
 
 ## 使用方法
