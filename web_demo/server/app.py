@@ -18,6 +18,8 @@ plantuml = PlantUML(url='http://27.25.158.240:50950/plantuml/png/')
 model_backend_url = "http:127.0.0.1:6006"
 
 
+
+# 从pantuml服务器获取图片的url
 @app.route('/get_uml', methods=['POST'])
 def get_uml():
     data = request.get_json()
@@ -33,7 +35,7 @@ def get_uml():
     return jsonify({"url": url_uml})
 
 
-# 模型后端调用接口
+# 语言模型后端调用接口
 def call_large_model_backend(messages, query):
     payload = {
         "prompt": query,
