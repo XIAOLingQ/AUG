@@ -56,6 +56,11 @@ def create_message_container(role, content):
                 # 初始化编辑模式状态
                 if edit_mode_key not in st.session_state:
                     st.session_state[edit_mode_key] = False
+                    
+                # 添加显示图片模式状态
+                show_image_key = f"show_image_{unique_key}"
+                if show_image_key not in st.session_state:
+                    st.session_state[show_image_key] = True
                 
                 # 提取代码内容
                 code = stripped_part.strip('`').strip()
@@ -121,14 +126,18 @@ def create_message_container(role, content):
                                 # 添加一些上边距以对齐
                                 st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
                                 
-                                try:
-                                    diagram_url = get_uml_diagram(edited_code)
-                                    if diagram_url:
-                                        st.image(diagram_url, use_column_width=True)
-                                    else:
-                                        st.error("生成UML图失败")
-                                except Exception as e:
-                                    st.error(f"生成UML图错误: {str(e)}")
+                                # 添加显示/隐藏图片的切换按钮
+                                show_image = st.toggle('显示图片', key=show_image_key, value=True)
+                                
+                                if show_image:
+                                    try:
+                                        diagram_url = get_uml_diagram(edited_code)
+                                        if diagram_url:
+                                            st.image(diagram_url, use_container_width=True)
+                                        else:
+                                            st.error("生成UML图失败")
+                                    except Exception as e:
+                                        st.error(f"生成UML图错误: {str(e)}")
             else:
                 # 显示普通文本
                 if stripped_part:
