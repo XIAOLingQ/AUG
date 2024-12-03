@@ -1,9 +1,13 @@
+import asyncio
 import streamlit as st
 import uuid
 from zhipuai import ZhipuAI
 from plantuml import PlantUML
 import re
+import httpx
+import json
 
+llm_serve_url = "http://36.50.226.35:33642"
 # Constants
 plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
 DEFAULT_USER_ID = str(uuid.uuid4())
@@ -120,6 +124,29 @@ def create_message_container(role, content):
                 if stripped_part:
                     st.markdown(stripped_part)
 
+async def get_bot_response(messages_history):
+    timeout = httpx.Timeout(30.0, connect=60.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            response = await client.post(
+                llm_serve_url,
+                json={'messages': messages_history},
+                timeout=timeout
+            )
+            
+            response_data = response.json()
+            print(f"原始响应: {response_data}")
+            
+            if isinstance(response_data, dict) and response_data.get('status') == 200:
+                content = response_data.get('data', {}).get('content', '')
+                if content:
+                    return content
+            return "无法获取有效响应"
+                        
+        except Exception as e:
+            print(f"API请求错误: {str(e)}")
+            return f"发生错误: {str(e)}"
+
 def main():
     # 检查是否需要重置
     if st.session_state.should_reset:
@@ -197,51 +224,36 @@ def main():
         create_message_container("user", prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Get bot response
-        full_response = ""
-        
-        client = ZhipuAI(api_key="9e552efc10638d85e8042d40b9acbcce.jissfQ9lXpIbJRfK")
-
         messages_history = [
             {"role": "system", "content": "你是一个乐于解答各种问题的助手，你的任务是为用户提供专业、准确、有见地的建议。"},
         ] + st.session_state.messages
         
-        messages_history.append({"role": "user", "content": prompt})
-
         try:
-            response = client.chat.completions.create(
-                model="glm-4-9b",
-                messages=messages_history,
-                top_p=0.7,
-                temperature=0.95,
-                max_tokens=1024,
-                tools=[{"type": "web_search", "web_search": {"search_result": True}}],
-                stream=True
-            )
-            
-            # 创建一个占位符用于流式显示
-            placeholder = st.empty()
-            with placeholder.container():
-                with st.chat_message("assistant"):
-                    message_placeholder = st.empty()
-                    for trunk in response:
-                        try:
-                            content = trunk.choices[0].delta.content if trunk.choices else ""
-                            full_response += content
-                            message_placeholder.markdown(full_response + "▌")
-                        except Exception as e:
-                            st.error(f"Error processing response: {str(e)}")
-                            break
-            
-            # 清除流式显示的内容
-            placeholder.empty()
-            
-            # 显示最终的完整响应
-            create_message_container("assistant", full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                
+                async def run_conversation():
+                    try:
+                        response = await get_bot_response(messages_history)
+                        message_placeholder.markdown(response)
+                        return response
+                    except Exception as e:
+                        error_msg = f"处理响应时出错: {str(e)}"
+                        print(error_msg)
+                        return error_msg
+
+                # 运行异步任务
+                final_response = asyncio.run(run_conversation())
+                
+                # 添加最终响应到消息历史
+                if final_response:
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": final_response
+                    })
+                
         except Exception as e:
-            st.error(f"Error getting response from ZhipuAI: {str(e)}")
+            st.error(f"Error getting response from API: {str(e)}")
 
 if __name__ == "__main__":
     main()

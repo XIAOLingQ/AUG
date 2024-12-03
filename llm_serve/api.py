@@ -1,11 +1,26 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import uvicorn
+import torch
 import os
 import torch
 import uvicorn
 from fastapi import FastAPI, Request
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from pydantic import BaseModel
 from typing import List, Dict
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+import json
+import json
+import os
+from transformers import TextStreamer  # 添加这个导入
+import asyncio
+
+# 定义请求体结构
+class ChatRequest(BaseModel):
+    messages: List[Dict[str, str]]  # 历史记录，以 role 和 content 对象列表的形式
+
+app = FastAPI()
+
 
 # 设置环境变量
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -26,67 +41,50 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto"  # 使用 accelerate 进行设备自动分配
 ).eval()  # 删除 .to(device) 调用
 
-# 创建 FastAPI 实例
-app = FastAPI()
-gen_kwargs = {"max_length": 2500, "do_sample": True, "top_k": 1}
-
-# 定义请求体结构
-class ChatRequest(BaseModel):
-    prompt: str
-    history: List[Dict[str, str]]  # 历史记录，以 role 和 content 对象列表的形式
-
-# API 路由处理 POST 请求
 @app.post("/")
 async def generate_response(request: ChatRequest):
-    user_input = request.prompt
-    history = request.history if request.history else []  # 如果没有历史，则初始化为空列表
-
-    # 打印调试信息，查看历史记录
-    print(f"Received history: {history}")
-
-    # 合并历史记录和当前输入
-    conversation_history = [
-        {"role": "system", "content": "你是AUG需求助手，你的任务是协助开发者进行需求建模。"}
-    ]
-
-    # 处理历史记录，使用 role 来保持一致性
-    if history:
-        for message in history:
-            # 检查 message 中的 role 类型，直接追加到 conversation_history 中
-            conversation_history.append({"role": message["role"], "content": message["content"]})
-
-    inputs = tokenizer.apply_chat_template(conversation_history,
-                                           add_generation_prompt=True,
-                                           tokenize=True,
-                                           return_tensors="pt",
-                                           return_dict=True
-                                           )
-
-    # 移动 inputs 到模型所在的设备（accelerate 会处理设备分配）
+    if not request.messages:
+        raise HTTPException(status_code=400, detail="消息列表不能为空")
+    
+    inputs = tokenizer.apply_chat_template(
+        request.messages,
+        add_generation_prompt=True,
+        tokenize=True,
+        return_tensors="pt",
+        return_dict=True
+    )
+    
     inputs = {key: value.to(device) for key, value in inputs.items()}
-
-    # 生成响应
-    gen_kwargs = {"max_new_tokens": 5000, "do_sample": True, "top_k": 1}
-
-    with torch.no_grad():
-        outputs = model.generate(**inputs, **gen_kwargs)
-        outputs = outputs[:, inputs['input_ids'].shape[1]:]
-
-    # 解码生成的文本
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-    history.append({"role": "assistant", "content": response})
-
-    # 打印调试信息，查看最新的历史记录
-    print(f"Updated history: {history}")
-
-    # 返回生成的响应和历史
-    return JSONResponse(content={
-        "status": 200,
-        "response": response,
-        "history": history
-    })
-
+    
+    gen_kwargs = {
+        "max_new_tokens": 5000,
+        "do_sample": True,
+        "top_k": 1,
+    }
+    
+    async def response_generator():
+        try:
+            with torch.no_grad():
+                input_length = inputs["input_ids"].shape[1]
+                output = model.generate(**inputs, **gen_kwargs)[0]
+                new_tokens = output[input_length:]
+                response = tokenizer.decode(new_tokens, skip_special_tokens=True)
+                
+                yield json.dumps({
+                    "status": 200,
+                    "data": {
+                        "content": response.strip()
+                    }
+                }, ensure_ascii=False)  # 确保正确编码
+        except Exception as e:
+            error_response = {"status": 500, "error": str(e)}
+            yield json.dumps(error_response, ensure_ascii=False)
+    
+    return StreamingResponse(
+        response_generator(),
+        media_type="application/json"
+    )
+    
 # 代码内启动 FastAPI 服务器
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=6006)
