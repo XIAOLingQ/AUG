@@ -14,6 +14,7 @@ import json
 import os
 from transformers import TextStreamer  # 添加这个导入
 import asyncio
+from transformers import TextIteratorStreamer
 
 # 定义请求体结构
 class ChatRequest(BaseModel):
@@ -60,29 +61,59 @@ async def generate_response(request: ChatRequest):
         "max_new_tokens": 5000,
         "do_sample": True,
         "top_k": 1,
+        "temperature": 0.7,
+        "repetition_penalty": 1.1,
+        "streamer": TextIteratorStreamer(tokenizer, skip_special_tokens=True)
     }
     
     async def response_generator():
         try:
-            with torch.no_grad():
-                input_length = inputs["input_ids"].shape[1]
-                output = model.generate(**inputs, **gen_kwargs)[0]
-                new_tokens = output[input_length:]
-                response = tokenizer.decode(new_tokens, skip_special_tokens=True)
-                
+            streamer = TextIteratorStreamer(tokenizer, skip_special_tokens=True)
+            gen_kwargs["streamer"] = streamer
+            
+            # 在后台线程中运行模型生成
+            generation_task = asyncio.create_task(
+                asyncio.to_thread(
+                    model.generate,
+                    **inputs,
+                    **gen_kwargs
+                )
+            )
+            
+            # 逐个产出生成的token
+            async for text in streamer:
                 yield json.dumps({
                     "status": 200,
                     "data": {
-                        "content": response.strip()
+                        "content": text,
+                        "stop": False
                     }
-                }, ensure_ascii=False)  # 确保正确编码
+                }, ensure_ascii=False) + "\n"
+            
+            # 发送结束标记
+            yield json.dumps({
+                "status": 200,
+                "data": {
+                    "content": "",
+                    "stop": True
+                }
+            }, ensure_ascii=False)
+            
+            await generation_task  # 等待生成完成
+            
         except Exception as e:
-            error_response = {"status": 500, "error": str(e)}
-            yield json.dumps(error_response, ensure_ascii=False)
+            yield json.dumps({
+                "status": 500,
+                "error": str(e)
+            }, ensure_ascii=False)
     
     return StreamingResponse(
         response_generator(),
-        media_type="application/json"
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
     )
     
 # 代码内启动 FastAPI 服务器

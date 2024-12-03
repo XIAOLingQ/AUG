@@ -7,6 +7,7 @@ import re
 import httpx
 import json
 
+
 llm_serve_url = "http://36.50.226.35:33642"
 # Constants
 plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
@@ -128,20 +129,38 @@ async def get_bot_response(messages_history):
     timeout = httpx.Timeout(30.0, connect=60.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
-            response = await client.post(
+            async with client.stream(
+                'POST',
                 llm_serve_url,
                 json={'messages': messages_history},
                 timeout=timeout
-            )
-            
-            response_data = response.json()
-            print(f"原始响应: {response_data}")
-            
-            if isinstance(response_data, dict) and response_data.get('status') == 200:
-                content = response_data.get('data', {}).get('content', '')
-                if content:
-                    return content
-            return "无法获取有效响应"
+            ) as response:
+                full_response = ""
+                placeholder = st.empty()
+                
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
+                        
+                    try:
+                        data = json.loads(line)
+                        if data.get('status') == 200:
+                            chunk = data.get('data', {})
+                            if chunk.get('stop', False):
+                                break
+                                
+                            content = chunk.get('content', '')
+                            full_response += content
+                            # 实时更新显示
+                            placeholder.markdown(full_response + "▌")
+                    except json.JSONDecodeError:
+                        continue
+                
+                # 最终更新，移除光标
+                if full_response:
+                    placeholder.markdown(full_response)
+                    return full_response
+                return "无法获取有效响应"
                         
         except Exception as e:
             print(f"API请求错误: {str(e)}")
@@ -221,11 +240,9 @@ def main():
             pass
 
     if prompt:
-        # 立即显示用户输入
         with st.chat_message("user"):
             st.markdown(prompt)
-            
-        # 添加到消息历史
+        
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
@@ -233,27 +250,11 @@ def main():
         ] + st.session_state.messages
 
         try:
-            # 显示加载状态
-            with st.spinner('正在思考中...'):
-                async def run_conversation():
-                    try:
-                        response = await get_bot_response(messages_history)
-                        return response
-                    except Exception as e:
-                        return f"处理响应时出错: {str(e)}"
-
-                # 运行异步任务
-                final_response = asyncio.run(run_conversation())
-                
-                if final_response:
-                    # 立即显示AI响应
-                    with st.chat_message("assistant"):
-                        st.markdown(final_response)
-                    st.session_state.messages.append({"role": "assistant", "content": final_response})
-                
-                # 使用 rerun 重新加载页面
-                st.rerun()
-
+            with st.chat_message("assistant"):
+                response = asyncio.run(get_bot_response(messages_history))
+                if response:
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+        
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
 
