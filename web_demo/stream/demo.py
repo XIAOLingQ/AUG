@@ -37,7 +37,9 @@ def reset_chat():
 
 def create_message_container(role, content):
     with st.chat_message(role):
+        # 分割消息内容，处理代码块
         parts = re.split(r'(```[\s\S]*?```)', content, flags=re.DOTALL)
+        
         # 获取消息在历史记录中的索引
         message_index = next((i for i, msg in enumerate(st.session_state.messages) 
                             if msg["role"] == role and msg["content"] == content), len(st.session_state.messages))
@@ -45,19 +47,21 @@ def create_message_container(role, content):
         for i, part in enumerate(parts):
             stripped_part = part.strip()
             if stripped_part.startswith('```') and stripped_part.endswith('```'):
-                # 使用完整的消息内容的哈希值来创建唯一的key
-                unique_key = hash(content + str(i))
-                code_key = f"code_{role}_{message_index}_{unique_key}"
-                editor_key = f"editor_{code_key}"
-                edit_mode_key = f"edit_mode_{code_key}"
+                # 创建唯一的key
+                unique_key = f"{role}_{message_index}_{i}"
+                code_key = f"code_{unique_key}"
+                editor_key = f"editor_{unique_key}"
+                edit_mode_key = f"edit_mode_{unique_key}"
                 
                 # 初始化编辑模式状态
                 if edit_mode_key not in st.session_state:
                     st.session_state[edit_mode_key] = False
                 
+                # 提取代码内容
                 code = stripped_part.strip('`').strip()
                 first_line = code.split('\n')[0] if '\n' in code else ''
                 
+                # 处理PlantUML代码
                 if first_line.lower() in ['plantuml', 'uml']:
                     code = '\n'.join(code.split('\n')[1:])
                 
@@ -65,62 +69,68 @@ def create_message_container(role, content):
                 if code_key not in st.session_state:
                     st.session_state[code_key] = code
                 
+                # 计算代码编辑器高度
                 num_lines = len(code.split('\n'))
-                height = max(num_lines * 24, 100)
+                height = max(min(num_lines * 24, 400), 100)  # 限制最大高度为400px
                 
-                # 创建两列布局
-                col1, col2 = st.columns([1, 1])
-                
-                with col1:
-                    edit_mode = st.toggle('编辑模式', key=edit_mode_key)
+                # 使用容器来改善布局
+                with st.container():
+                    # 创建两列布局，调整比例
+                    col1, col2 = st.columns([0.7, 0.3])
                     
-                    if edit_mode:
-                        edited_code = st.text_area(
-                            "编辑代码",
-                            value=st.session_state[code_key],
-                            key=editor_key,
-                            height=height
-                        )
-                    else:
-                        st.code(st.session_state[code_key], language='java')
-                        edited_code = st.session_state[code_key]
-                    
-                    # 检查代码是否发生变化
-                    if edited_code != st.session_state[code_key]:
-                        st.session_state[code_key] = edited_code
-                        # 如果代码发生变化，强制更新图表
-                        if first_line.lower() in ['plantuml', 'uml']:
-                            st.session_state[f"update_diagram_{code_key}"] = True
-                    
-                # 如果是 PlantUML 代码，在右侧列处理 UML 图生成
-                if first_line.lower() in ['plantuml', 'uml']:
-                    if '@startuml' in edited_code.lower() and '@enduml' in edited_code.lower():
-                        with col2:
-                            diagram_key = f"diagram_{role}_{message_index}_{unique_key}"
-                            toggle_key = f"toggle_{diagram_key}"
+                    with col1:
+                        # 添加一些间距
+                        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+                        
+                        # 编辑模式切换
+                        edit_mode = st.toggle('编辑模式', key=edit_mode_key)
+                        
+                        if edit_mode:
+                            # 使用自定义样式的文本区域
+                            st.markdown("""
+                                <style>
+                                .stTextArea textarea {
+                                    font-family: monospace !important;
+                                    line-height: 1.4 !important;
+                                    padding: 10px !important;
+                                }
+                                </style>
+                            """, unsafe_allow_html=True)
                             
-                            if toggle_key not in st.session_state:
-                                st.session_state[toggle_key] = True
-                            
-                            show_diagram = st.toggle(
-                                '显示/隐藏 UML 图',
-                                value=st.session_state[toggle_key],
-                                key=toggle_key
+                            edited_code = st.text_area(
+                                "编辑代码",
+                                value=st.session_state[code_key],
+                                key=editor_key,
+                                height=height
                             )
-                            
-                            if show_diagram:
+                        else:
+                            # 显示代码块
+                            st.code(st.session_state[code_key], language='java')
+                            edited_code = st.session_state[code_key]
+                        
+                        # 更新代码状态
+                        if edited_code != st.session_state[code_key]:
+                            st.session_state[code_key] = edited_code
+                    
+                    # 处理PlantUML图表
+                    if first_line.lower() in ['plantuml', 'uml']:
+                        with col2:
+                            if '@startuml' in edited_code.lower() and '@enduml' in edited_code.lower():
+                                diagram_key = f"diagram_{unique_key}"
+                                
+                                # 添加一些上边距以对齐
+                                st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
+                                
                                 try:
-                                    # 添加一些上边距以对齐代码编辑器
-                                    st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
-                                    # 生成并显示图表
                                     diagram_url = get_uml_diagram(edited_code)
                                     if diagram_url:
-                                        st.image(diagram_url, caption="Generated UML Diagram")
+                                        st.image(diagram_url, use_column_width=True)
                                     else:
-                                        st.error("生成UML图失败，请检查PlantUML语法")
+                                        st.error("生成UML图失败")
                                 except Exception as e:
-                                    st.error(f"生成UML图时发生错误: {str(e)}")
+                                    st.error(f"生成UML图错误: {str(e)}")
             else:
+                # 显示普通文本
                 if stripped_part:
                     st.markdown(stripped_part)
 
