@@ -11,6 +11,10 @@ DEFAULT_USER_ID = str(uuid.uuid4())
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
+# 添加一个新的状态来追踪是否需要重置
+if 'should_reset' not in st.session_state:
+    st.session_state.should_reset = False
+
 # Page config
 st.set_page_config(page_title="Chat Application", layout="wide")
 
@@ -25,91 +29,121 @@ def get_uml_diagram(uml_code):
 
 def reset_chat():
     """Reset chat history"""
-    st.session_state.messages = []
-    st.rerun()
+    st.session_state.should_reset = True
 
 def create_message_container(role, content):
-    # 移除 chat_message 的 key 参数
     with st.chat_message(role):
         parts = re.split(r'(```[\s\S]*?```)', content, flags=re.DOTALL)
+        # 获取消息在历史记录中的索引
+        message_index = next((i for i, msg in enumerate(st.session_state.messages) 
+                            if msg["role"] == role and msg["content"] == content), len(st.session_state.messages))
+        
         for i, part in enumerate(parts):
             stripped_part = part.strip()
             if stripped_part.startswith('```') and stripped_part.endswith('```'):
-                # 使用消息索引和时间戳创建唯一的key
-                message_index = len(st.session_state.messages)
-                timestamp = uuid.uuid4().hex[:8]  # 添加一个随机字符串来确保唯一性
-                code_key = f"code_{role}_{message_index}_{i}_{timestamp}"
+                # 使用完整的消息内容的哈希值来创建唯一的key
+                unique_key = hash(content + str(i))
+                code_key = f"code_{role}_{message_index}_{unique_key}"
                 editor_key = f"editor_{code_key}"
+                edit_mode_key = f"edit_mode_{code_key}"
                 
-                # 保留完整的代码块，包括语言标记
+                # 初始化编辑模式状态
+                if edit_mode_key not in st.session_state:
+                    st.session_state[edit_mode_key] = False
+                
                 code = stripped_part.strip('`').strip()
                 first_line = code.split('\n')[0] if '\n' in code else ''
                 
-                # 如果是 PlantUML 代码，移除第一行的标记
                 if first_line.lower() in ['plantuml', 'uml']:
                     code = '\n'.join(code.split('\n')[1:])
                 
+                # 初始化代码内容
                 if code_key not in st.session_state:
                     st.session_state[code_key] = code
                 
-                # 计算代码行数并设置适当的高度
                 num_lines = len(code.split('\n'))
-                height = max(num_lines * 24, 100)  # 每行大约24像素，最小高度100像素
+                height = max(num_lines * 24, 100)
                 
-                # 使用 st.text_area 显示可编辑的代码块
-                edited_code = st.text_area(
-                    "编辑代码",
-                    value=st.session_state[code_key],
-                    key=editor_key,  # 使用新的唯key
-                    height=height  # 根据代码行数动态设置高度
-                )
+                # 创建两列布局
+                col1, col2 = st.columns([1, 1])
                 
-                # 如果代码被修改，更新session state
-                if edited_code != st.session_state[code_key]:
-                    st.session_state[code_key] = edited_code
-                
-                # 如果是 PlantUML 代码，处理 UML 图生成
+                with col1:
+                    edit_mode = st.toggle('编辑模式', key=edit_mode_key)
+                    
+                    if edit_mode:
+                        edited_code = st.text_area(
+                            "编辑代码",
+                            value=st.session_state[code_key],
+                            key=editor_key,
+                            height=height
+                        )
+                    else:
+                        st.code(st.session_state[code_key], language='java')
+                        edited_code = st.session_state[code_key]
+                    
+                    # 检查代码是否发生变化
+                    if edited_code != st.session_state[code_key]:
+                        st.session_state[code_key] = edited_code
+                        # 如果代码发生变化，强制更新图表
+                        if first_line.lower() in ['plantuml', 'uml']:
+                            st.session_state[f"update_diagram_{code_key}"] = True
+                    
+                # 如果是 PlantUML 代码，在右侧列处理 UML 图生成
                 if first_line.lower() in ['plantuml', 'uml']:
                     if '@startuml' in edited_code.lower() and '@enduml' in edited_code.lower():
-                        diagram_key = f"diagram_{role}_{message_index}_{i}"
-                        toggle_key = f"toggle_{diagram_key}"
-                        
-                        # 初始化 toggle 状态
-                        if toggle_key not in st.session_state:
-                            st.session_state[toggle_key] = True
-                        
-                        # 使用更简单的方式处理toggle状态
-                        show_diagram = st.toggle(
-                            '显示/隐藏 UML 图',
-                            key=toggle_key  # Streamlit 会自动处理状态
-                        )
-                        
-                        if show_diagram:
-                            try:
-                                diagram_url = get_uml_diagram(edited_code)
-                                if diagram_url:
-                                    st.image(diagram_url, caption="Generated UML Diagram")
-                                else:
-                                    st.error("生成UML图失败，请检查PlantUML语法")
-                            except Exception as e:
-                                st.error(f"生成UML图时发生错误: {str(e)}")
+                        with col2:
+                            diagram_key = f"diagram_{role}_{message_index}_{unique_key}"
+                            toggle_key = f"toggle_{diagram_key}"
+                            
+                            if toggle_key not in st.session_state:
+                                st.session_state[toggle_key] = True
+                            
+                            show_diagram = st.toggle(
+                                '显示/隐藏 UML 图',
+                                value=st.session_state[toggle_key],
+                                key=toggle_key
+                            )
+                            
+                            if show_diagram:
+                                try:
+                                    # 添加一些上边距以对齐代码编辑器
+                                    st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
+                                    # 生成并显示图表
+                                    diagram_url = get_uml_diagram(edited_code)
+                                    if diagram_url:
+                                        st.image(diagram_url, caption="Generated UML Diagram")
+                                    else:
+                                        st.error("生成UML图失败，请检查PlantUML语法")
+                                except Exception as e:
+                                    st.error(f"生成UML图时发生错误: {str(e)}")
             else:
                 if stripped_part:
-                    # 移除 key 参数，直接显示文本内容
                     st.markdown(stripped_part)
 
 def main():
+    # 检查是否需要重置
+    if st.session_state.should_reset:
+        st.session_state.messages = []
+        st.session_state.should_reset = False
+        
     st.markdown("""
         <style>
         /* 输入框容器样式 */
         div[data-testid="stChatInput"] {
             position: fixed !important;
             bottom: 0 !important;
-            left: 0 !important;
+            left: 20px !important;
             padding: 1rem !important;
-            width: calc(100% - 160px) !important;
+            width: calc(100% - 180px) !important;
             background-color: #0E1117 !important;
             z-index: 999 !important;
+        }
+        
+        /* 输入框本身的样式 */
+        div[data-testid="stChatInput"] input {
+            background-color: #262730 !important;
+            opacity: 1 !important;
+            background-color: #0E1117 !important;
         }
         
         /* 重置按钮样式 - 只针对 secondary 类型的按钮 */
@@ -123,6 +157,7 @@ def main():
             background-color: #262730 !important;
             border: 1px solid #4a4a4a !important;
             color: white !important;
+            background-color: #0E1117 !important;
         }
         
         /* 生成UML按钮样式 - 针对 primary 类型的按钮 */
@@ -142,6 +177,7 @@ def main():
         /* 为底部固定元素留出空间 */
         section.main > div.block-container {
             padding-bottom: 80px !important;
+            background-color: #0E1117 !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -153,7 +189,8 @@ def main():
     # 创建固定在底部的输入区域
     with st.container():
         prompt = st.chat_input("在这里输入您的消息...")
-        st.button("重置聊天", key="reset_button", type="secondary")
+        if st.button("重置聊天", key="reset_button", type="secondary", on_click=reset_chat):
+            pass
 
     if prompt:
         # Add user message
