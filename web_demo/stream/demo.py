@@ -1,16 +1,19 @@
 import asyncio
 import streamlit as st
 import uuid
-from zhipuai import ZhipuAI
-from plantuml import PlantUML
 import re
 import httpx
-import json
+import sys
+import os
 
-llm_serve_url = "http://36.50.226.35:33642"
+# 添加项目根目录到 Python 路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from stream.components.uml_editor import render_uml_editor
+
 # Constants
-plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
 DEFAULT_USER_ID = str(uuid.uuid4())
+llm_serve_url = "http://36.50.226.35:33642"
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -21,15 +24,6 @@ if 'should_reset' not in st.session_state:
 
 # Page config
 st.set_page_config(page_title="Chat Application", layout="wide")
-
-def get_uml_diagram(uml_code):
-    """Generate PlantUML diagram URL using public server"""
-    try:
-        url = plantuml.get_url(uml_code)
-        return url
-    except Exception as e:
-        st.error(f"Error generating UML diagram: {str(e)}")
-        return None
 
 def reset_chat():
     """Reset chat history"""
@@ -44,82 +38,17 @@ def create_message_container(role, content, message_idx):
             if stripped_part.startswith('```') and stripped_part.endswith('```'):
                 unique_key = f"{role}_{message_idx}_{i}"
                 code_key = f"code_{unique_key}"
-                editor_key = f"editor_{unique_key}"
-                edit_mode_key = f"edit_mode_{unique_key}"
-                show_image_key = f"show_image_{unique_key}"
-                
-                if edit_mode_key not in st.session_state:
-                    st.session_state[edit_mode_key] = False
-                
-                if show_image_key not in st.session_state:
-                    st.session_state[show_image_key] = True
                 
                 code = stripped_part.strip('`').strip()
                 first_line = code.split('\n')[0] if '\n' in code else ''
                 
                 if first_line.lower() in ['plantuml', 'uml']:
                     code = '\n'.join(code.split('\n')[1:])
-                
-                if code_key not in st.session_state:
-                    st.session_state[code_key] = code
-                
-                with st.container():
-                    col1, col2 = st.columns([0.5, 0.5])
+                    if code_key not in st.session_state:
+                        st.session_state[code_key] = code
                     
-                    with col1:
-                        st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
-                        edit_mode = st.toggle('编辑模式', key=edit_mode_key)
-                        
-                        # 计算代码行数和高度
-                        num_lines = len(st.session_state[code_key].split('\n'))
-                        height = num_lines * 24  # 每行24像素
-                        
-                        if edit_mode:
-                            st.markdown(f"""
-                                <style>
-                                div[data-testid="stTextArea"] {{
-                                    height: {height}px !important;
-                                }}
-                                .stTextArea textarea {{
-                                    font-family: monospace !important;
-                                    line-height: 1.4 !important;
-                                    padding: 10px !important;
-                                    height: {height}px !important;
-                                    min-height: {height}px !important;
-                                    max-height: {height}px !important;
-                                }}
-                                </style>
-                            """, unsafe_allow_html=True)
-                            
-                            edited_code = st.text_area(
-                                "",
-                                value=st.session_state[code_key],
-                                key=editor_key,
-                                label_visibility="collapsed"
-                            )
-                        else:
-                            st.code(st.session_state[code_key], language='java')
-                            edited_code = st.session_state[code_key]
-                        
-                        if edited_code != st.session_state[code_key]:
-                            st.session_state[code_key] = edited_code
-                    
-                    # 处理PlantUML图表
-                    if first_line.lower() in ['plantuml', 'uml']:
-                        with col2:
-                            if '@startuml' in edited_code.lower() and '@enduml' in edited_code.lower():
-                                st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
-                                show_image = st.toggle('显示图片', key=show_image_key)
-                                
-                                if show_image:
-                                    try:
-                                        diagram_url = get_uml_diagram(edited_code)
-                                        if diagram_url:
-                                            st.image(diagram_url, use_container_width=True)
-                                        else:
-                                            st.error("生成UML图失败")
-                                    except Exception as e:
-                                        st.error(f"生成UML图错误: {str(e)}")
+                    if '@startuml' in code.lower() and '@enduml' in code.lower():
+                        render_uml_editor(code_key, message_idx)
             else:
                 if stripped_part:
                     st.markdown(stripped_part)
@@ -207,12 +136,37 @@ def main():
             padding-bottom: 80px !important;
             background-color: #0E1117 !important;
         }
+
+        /* 大标题样式 */
+        .big-title {
+            text-align: center;
+            padding: 2rem 0;
+            color: #1E88E5;
+            font-size: 4rem;
+            font-weight: bold;
+            margin-top: 20vh;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            font-size: 1.5rem;
+            margin-top: 1rem;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    # 显示所有历史消息
-    for idx, message in enumerate(st.session_state.messages):
-        create_message_container(message["role"], message["content"], idx)
+    # 如果没有消息历史，显示大标题
+    if not st.session_state.messages:
+        st.markdown("""
+            <div class="big-title">AUG</div>
+            <div class="subtitle">AI UML Generator</div>
+        """, unsafe_allow_html=True)
+    else:
+        # 显示所有历史消息
+        for idx, message in enumerate(st.session_state.messages):
+            create_message_container(message["role"], message["content"], idx)
 
     # 创建固定在底部的输入区域
     with st.container():
@@ -256,6 +210,22 @@ def main():
 
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
+
+    # 添加处理编辑器消息的 JavaScript
+    st.markdown("""
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'uml-export') {
+            // 更新编辑区域的内容
+            const textArea = document.querySelector('textarea');
+            if (textArea) {
+                textArea.value = event.data.content;
+                textArea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
