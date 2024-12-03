@@ -35,63 +35,45 @@ def reset_chat():
     """Reset chat history"""
     st.session_state.should_reset = True
 
-def create_message_container(role, content):
+def create_message_container(role, content, message_idx):
     with st.chat_message(role):
-        # 分割消息内容，处理代码块
         parts = re.split(r'(```[\s\S]*?```)', content, flags=re.DOTALL)
-        
-        # 获取消息在历史记录中的索引
-        message_index = next((i for i, msg in enumerate(st.session_state.messages) 
-                            if msg["role"] == role and msg["content"] == content), len(st.session_state.messages))
         
         for i, part in enumerate(parts):
             stripped_part = part.strip()
             if stripped_part.startswith('```') and stripped_part.endswith('```'):
-                # 创建唯一的key
-                unique_key = f"{role}_{message_index}_{i}"
+                unique_key = f"{role}_{message_idx}_{i}"
                 code_key = f"code_{unique_key}"
                 editor_key = f"editor_{unique_key}"
                 edit_mode_key = f"edit_mode_{unique_key}"
                 
-                # 初始化编辑模式状态
                 if edit_mode_key not in st.session_state:
                     st.session_state[edit_mode_key] = False
-                    
-                # 添加显示图片模式状态
+                
                 show_image_key = f"show_image_{unique_key}"
                 if show_image_key not in st.session_state:
                     st.session_state[show_image_key] = True
                 
-                # 提取代码内容
                 code = stripped_part.strip('`').strip()
                 first_line = code.split('\n')[0] if '\n' in code else ''
                 
-                # 处理PlantUML代码
                 if first_line.lower() in ['plantuml', 'uml']:
-                    code = '\n'.join(code.split('\n')[1:])
+                    code = '\n'.join(code.split('\n')[1:])  # 移除第一行
                 
-                # 初始化代码内容
                 if code_key not in st.session_state:
                     st.session_state[code_key] = code
                 
-                # 计算代码编辑器高度
                 num_lines = len(code.split('\n'))
-                height = max(min(num_lines * 24, 400), 100)  # 限制最大高度为400px
+                height = max(min(num_lines * 24, 400), 100)
                 
-                # 使用容器来改善布局
                 with st.container():
-                    # 创建两列布局，调整比例
                     col1, col2 = st.columns([0.7, 0.3])
                     
                     with col1:
-                        # 添加一些间距
                         st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
-                        
-                        # 编辑模式切换
                         edit_mode = st.toggle('编辑模式', key=edit_mode_key)
                         
                         if edit_mode:
-                            # 使用自定义样式的文本区域
                             st.markdown("""
                                 <style>
                                 .stTextArea textarea {
@@ -109,11 +91,9 @@ def create_message_container(role, content):
                                 height=height
                             )
                         else:
-                            # 显示代码块
                             st.code(st.session_state[code_key], language='java')
                             edited_code = st.session_state[code_key]
                         
-                        # 更新代码状态
                         if edited_code != st.session_state[code_key]:
                             st.session_state[code_key] = edited_code
                     
@@ -121,13 +101,8 @@ def create_message_container(role, content):
                     if first_line.lower() in ['plantuml', 'uml']:
                         with col2:
                             if '@startuml' in edited_code.lower() and '@enduml' in edited_code.lower():
-                                diagram_key = f"diagram_{unique_key}"
-                                
-                                # 添加一些上边距以对齐
                                 st.markdown("<div style='margin-top: 32px;'></div>", unsafe_allow_html=True)
-                                
-                                # 添加显示/隐藏图片的切换按钮
-                                show_image = st.toggle('显示图片', key=show_image_key, value=True)
+                                show_image = st.toggle('显示图片', key=show_image_key)
                                 
                                 if show_image:
                                     try:
@@ -139,7 +114,6 @@ def create_message_container(role, content):
                                     except Exception as e:
                                         st.error(f"生成UML图错误: {str(e)}")
             else:
-                # 显示普通文本
                 if stripped_part:
                     st.markdown(stripped_part)
 
@@ -171,7 +145,8 @@ def main():
     if st.session_state.should_reset:
         st.session_state.messages = []
         st.session_state.should_reset = False
-        
+    
+    # 添加样式
     st.markdown("""
         <style>
         /* 输入框容器样式 */
@@ -228,9 +203,9 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # 显示历史消息
-    for message in st.session_state.messages:
-        create_message_container(message["role"], message["content"])
+    # 显示所有历史消息
+    for idx, message in enumerate(st.session_state.messages):
+        create_message_container(message["role"], message["content"], idx)
 
     # 创建固定在底部的输入区域
     with st.container():
@@ -239,38 +214,30 @@ def main():
             pass
 
     if prompt:
-        # Add user message
-        create_message_container("user", prompt)
+        # 直接添加到消息历史
         st.session_state.messages.append({"role": "user", "content": prompt})
-
+        
         messages_history = [
             {"role": "system", "content": "你是一个乐于解答各种问题的助手，你的任务是为用户提供专业、准确、有见地的建议。"},
         ] + st.session_state.messages
-        
-        try:
-            with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                
-                async def run_conversation():
-                    try:
-                        response = await get_bot_response(messages_history)
-                        message_placeholder.markdown(response)
-                        return response
-                    except Exception as e:
-                        error_msg = f"处理响应时出错: {str(e)}"
-                        print(error_msg)
-                        return error_msg
 
-                # 运行异步任务
-                final_response = asyncio.run(run_conversation())
-                
-                # 添加最终响应到消息历史
-                if final_response:
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": final_response
-                    })
-                
+        try:
+            async def run_conversation():
+                try:
+                    response = await get_bot_response(messages_history)
+                    return response
+                except Exception as e:
+                    return f"处理响应时出错: {str(e)}"
+
+            # 运行异步任务
+            final_response = asyncio.run(run_conversation())
+            
+            if final_response:
+                st.session_state.messages.append({"role": "assistant", "content": final_response})
+            
+            # 使用 rerun 重新加载页面
+            st.rerun()
+
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
 
