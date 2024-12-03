@@ -46,11 +46,11 @@ def create_message_container(role, content, message_idx):
                 code_key = f"code_{unique_key}"
                 editor_key = f"editor_{unique_key}"
                 edit_mode_key = f"edit_mode_{unique_key}"
+                show_image_key = f"show_image_{unique_key}"
                 
                 if edit_mode_key not in st.session_state:
                     st.session_state[edit_mode_key] = False
                 
-                show_image_key = f"show_image_{unique_key}"
                 if show_image_key not in st.session_state:
                     st.session_state[show_image_key] = True
                 
@@ -58,37 +58,44 @@ def create_message_container(role, content, message_idx):
                 first_line = code.split('\n')[0] if '\n' in code else ''
                 
                 if first_line.lower() in ['plantuml', 'uml']:
-                    code = '\n'.join(code.split('\n')[1:])  # 移除第一行
+                    code = '\n'.join(code.split('\n')[1:])
                 
                 if code_key not in st.session_state:
                     st.session_state[code_key] = code
                 
-                num_lines = len(code.split('\n'))
-                height = max(min(num_lines * 24, 400), 100)
-                
                 with st.container():
-                    col1, col2 = st.columns([0.7, 0.3])
+                    col1, col2 = st.columns([0.5, 0.5])
                     
                     with col1:
                         st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
                         edit_mode = st.toggle('编辑模式', key=edit_mode_key)
                         
+                        # 计算代码行数和高度
+                        num_lines = len(st.session_state[code_key].split('\n'))
+                        height = num_lines * 24  # 每行24像素
+                        
                         if edit_mode:
-                            st.markdown("""
+                            st.markdown(f"""
                                 <style>
-                                .stTextArea textarea {
+                                div[data-testid="stTextArea"] {{
+                                    height: {height}px !important;
+                                }}
+                                .stTextArea textarea {{
                                     font-family: monospace !important;
                                     line-height: 1.4 !important;
                                     padding: 10px !important;
-                                }
+                                    height: {height}px !important;
+                                    min-height: {height}px !important;
+                                    max-height: {height}px !important;
+                                }}
                                 </style>
                             """, unsafe_allow_html=True)
                             
                             edited_code = st.text_area(
-                                "编辑代码",
+                                "",
                                 value=st.session_state[code_key],
                                 key=editor_key,
-                                height=height
+                                label_visibility="collapsed"
                             )
                         else:
                             st.code(st.session_state[code_key], language='java')
@@ -214,7 +221,11 @@ def main():
             pass
 
     if prompt:
-        # 直接添加到消息历史
+        # 立即显示用户输入
+        with st.chat_message("user"):
+            st.markdown(prompt)
+            
+        # 添加到消息历史
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
@@ -222,21 +233,26 @@ def main():
         ] + st.session_state.messages
 
         try:
-            async def run_conversation():
-                try:
-                    response = await get_bot_response(messages_history)
-                    return response
-                except Exception as e:
-                    return f"处理响应时出错: {str(e)}"
+            # 显示加载状态
+            with st.spinner('正在思考中...'):
+                async def run_conversation():
+                    try:
+                        response = await get_bot_response(messages_history)
+                        return response
+                    except Exception as e:
+                        return f"处理响应时出错: {str(e)}"
 
-            # 运行异步任务
-            final_response = asyncio.run(run_conversation())
-            
-            if final_response:
-                st.session_state.messages.append({"role": "assistant", "content": final_response})
-            
-            # 使用 rerun 重新加载页面
-            st.rerun()
+                # 运行异步任务
+                final_response = asyncio.run(run_conversation())
+                
+                if final_response:
+                    # 立即显示AI响应
+                    with st.chat_message("assistant"):
+                        st.markdown(final_response)
+                    st.session_state.messages.append({"role": "assistant", "content": final_response})
+                
+                # 使用 rerun 重新加载页面
+                st.rerun()
 
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
