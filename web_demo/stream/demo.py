@@ -85,74 +85,134 @@ def main():
     # 添加样式
     st.markdown("""
         <style>
-        /* 输入框容器样式 */
+        /* ===== 聊天输入框样式 ===== */
+        /* 输入框容器：固定在底部，自适应主题背景色 */
         div[data-testid="stChatInput"] {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 20px !important;
-            padding: 1rem !important;
-            width: calc(100% - 180px) !important;
-            background-color: #0E1117 !important;
-            z-index: 999 !important;
+            position: fixed !important;          /* 固定定位 */
+            bottom: 0 !important;               /* 贴底部 */
+            left: 20px !important;              /* 左侧留白 */
+            padding: 0 !important;              /* 移除内边距使容器与输入框大小一致 */
+            width: calc(100% - 160px) !important; /* 宽度计算，预留更多重置按钮空间 */
+            z-index: 999 !important;            /* 确保在最上层 */
+            background-color: transparent !important; /* 透明背景，继承系统主题 */
+            max-width: calc(100% - 160px) !important; /* 最大宽度限制 */
         }
         
-        /* 输入框本身的样式 */
+        /* 输入框本身：继承系统主题色 */
         div[data-testid="stChatInput"] input {
-            background-color: #262730 !important;
-            opacity: 1 !important;
-            background-color: #0E1117 !important;
+            width: calc(100% - 20px) !important; /* 输入框宽度，留出发送按钮空间 */
+            height: 100% !important;            /* 占满容器高度 */
+            padding: 1rem !important;           /* 统一的内边距 */
+            background-color: var(--background-color) !important; /* 使用系统主题背景色 */
+            border: 1px solid var(--primary-color) !important; /* 使用主题色作为边框 */
+            border-radius: 4px !important;      /* 圆角边框 */
+            color: var(--text-color) !important; /* 使用系统主题文字颜色 */
+            font-size: 1rem !important;         /* 标准字体大小 */
+            line-height: 1.5 !important;        /* 行高 */
+            transition: all 0.3s ease !important; /* 平滑过渡效果 */
+            margin-right: 20px !important;      /* 与发送按钮的间距 */
+        }
+
+        /* 输入框聚焦时的样式 */
+        div[data-testid="stChatInput"] input:focus {
+            outline: none !important;           /* 移除默认聚焦轮廓 */
+            border-color: var(--primary-color) !important; /* 使用主题色 */
+            box-shadow: 0 0 0 2px var(--primary-color-light) !important; /* 主题色阴影 */
+        }
+
+        /* 发送按钮容器 */
+        div[data-testid="stChatInput"] button {
+            right: 140px !important;           /* 与重置按钮保持距离 */
+            background-color: var(--primary-color) !important; /* 使用主题色 */
+            border-radius: 4px !important;     /* 圆角 */
+            transition: all 0.3s ease !important; /* 过渡动画 */
         }
         
-        /* 重置按钮样式 - 只针对 secondary 类型的按钮 */
+        /* ===== 重置按钮样式 ===== */
+        /* 次要按钮：固定在右下角，跟随主题 */
         button[kind="secondary"] {
-            position: fixed !important;
-            bottom: 16px !important;
-            right: 0 !important;
-            z-index: 999 !important;
-            margin: 0 !important;
-            width: 120px !important;
-            background-color: #262730 !important;
-            border: 1px solid #4a4a4a !important;
-            color: white !important;
-            background-color: #0E1117 !important;
+            position: fixed !important;          /* 固定定位 */
+            bottom: 16px !important;            /* 距底部距离 */
+            right: 20px !important;             /* 右侧留白 */
+            z-index: 999 !important;            /* 确保在最上层 */
+            margin: 0 !important;               /* 清除外边距 */
+            width: 100px !important;            /* 减小固定宽度 */
+            height: calc(1rem * 2 + 1.5em) !important; /* 与输入框等高 */
+            background-color: var(--background-color) !important; /* 使用系统主题背景色 */
+            border: 1px solid var(--primary-color) !important; /* 使用主题色边框 */
+            color: var(--text-color) !important; /* 使用系统主题文字颜色 */
+            border-radius: 4px !important;       /* 圆角 */
+            transition: all 0.3s ease !important; /* 过渡动画 */
+            min-width: 80px !important;          /* 最小宽度 */
+            font-size: 0.9rem !important;        /* 稍微减小字体 */
+            padding: 0 8px !important;           /* 减小内边距 */
+        }
+
+        /* 重置按钮悬停效果 */
+        button[kind="secondary"]:hover {
+            background-color: var(--primary-color-light) !important; /* 使用浅色主题色 */
+            border-color: var(--primary-color) !important;
+        }
+
+        /* 在小屏幕上调整布局 */
+        @media (max-width: 768px) {
+            div[data-testid="stChatInput"] {
+                width: calc(100% - 120px) !important; /* 减小输入框宽度 */
+                max-width: calc(100% - 120px) !important;
+            }
+            
+            div[data-testid="stChatInput"] button {
+                right: 110px !important;        /* 调整发送按钮位置 */
+            }
+            
+            button[kind="secondary"] {
+                width: 80px !important;         /* 更小的重置按钮 */
+                right: 10px !important;         /* 减小右侧间距 */
+            }
         }
         
-        /* 生成UML按钮样式 - 针对 primary 类型的按钮 */
+        /* ===== 主要按钮样式 ===== */
+        /* 生成UML按钮：使用主题色 */
         button[kind="primary"] {
-            background-color: #1E88E5 !important;
-            border: none !important;
-            color: white !important;
-            padding: 0.5rem 1rem !important;
-            border-radius: 4px !important;
-            transition: background-color 0.3s !important;
+            background-color: var(--primary-color) !important; /* 使用主题色 */
+            border: none !important;              /* 无边框 */
+            color: white !important;              /* 白色文字 */
+            padding: 0.5rem 1rem !important;      /* 内边距 */
+            border-radius: 4px !important;        /* 圆角 */
+            transition: all 0.3s ease !important; /* 颜色过渡动画 */
         }
         
+        /* 主要按钮悬停效果 */
         button[kind="primary"]:hover {
-            background-color: #1976D2 !important;
+            background-color: var(--primary-color-dark) !important; /* 使用深色主题色 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important; /* 添加阴影 */
         }
         
-        /* 为底部固定元素留出空间 */
+        /* ===== 布局调整 ===== */
+        /* 主容器：为固定元素预留空间 */
         section.main > div.block-container {
-            padding-bottom: 80px !important;
-            background-color: #0E1117 !important;
+            padding-bottom: calc(2rem + 1.5em) !important; /* 为输入框留出空间 */
+            background-color: var(--background-color) !important; /* 使用系统主题背景色 */
         }
 
-        /* 大标题样式 */
+        /* ===== 欢迎页面样式 ===== */
+        /* 大标题：AUG */
         .big-title {
-            text-align: center;
-            padding: 2rem 0;
-            color: #1E88E5;
-            font-size: 4rem;
-            font-weight: bold;
-            margin-top: 20vh;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            text-align: center;                   /* 居中对齐 */
+            padding: 2rem 0;                      /* 上下内边距 */
+            color: var(--primary-color);          /* 使用主题色 */
+            font-size: 4rem;                      /* 大字体 */
+            font-weight: bold;                    /* 粗体 */
+            margin-top: 20vh;                     /* 顶部外边距 */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2); /* 文字阴影 */
         }
 
+        /* 副标题：AI UML Generator */
         .subtitle {
-            text-align: center;
-            color: #718096;
-            font-size: 1.5rem;
-            margin-top: 1rem;
+            text-align: center;                   /* 居中对齐 */
+            color: var(--text-color-secondary);   /* 使用次要文字颜色 */
+            font-size: 1.5rem;                    /* 中等字体 */
+            margin-top: 1rem;                     /* 顶部外边距 */
         }
         </style>
     """, unsafe_allow_html=True)
