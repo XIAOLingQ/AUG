@@ -258,7 +258,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是自动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模；用户会让你对生成的plantuml根据五大标准进行评价打分"},
+            {"role": "system", "content": "你是自动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打分"},
         ] + st.session_state.messages
 
         try:
