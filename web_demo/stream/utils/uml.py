@@ -39,22 +39,31 @@ def get_existing_participants(code):
     return participants
 
 # 初始化 PlantUML
-plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
+plantuml = PlantUML(url='http://127.0.0.1:8888/plantuml/png/')
 
 def get_uml_diagram(uml_code, format='png'):
     """生成 PlantUML 图表并返回 URL 和原始数据"""
     try:
+        print("开始生成 UML 图...")  # 打印开始
         url = plantuml.get_url(uml_code)
+        print(f"PlantUML URL: {url}")  # 打印 URL
+        
         response = requests.get(url)
+        print(f"HTTP 状态码: {response.status_code}")  # 打印状态码
+        
         if response.status_code == 200:
-            return {
+            result = {
                 'url': url,
                 'data': base64.b64encode(response.content).decode('utf-8'),
                 'format': format
             }
+            print("图像生成成功")  # 打印成功
+            return result
+        
+        print(f"请求失败: {response.text}")  # 打印失败原因
         return None
     except Exception as e:
-        print(f"Error generating UML diagram: {str(e)}")
+        print(f"生成图表错误: {str(e)}")  # 打印错误
         return None
 
 def get_existing_classes(code):
@@ -74,42 +83,22 @@ def get_diagram_type(code):
     if '@startuml' not in code_lower:
         return None
     
-    # 分析每一行来更准确地判断图表类型
-    lines = code_lower.split('\n')
+    # 类图特征
+    has_class = 'class ' in code_lower and '{' in code_lower
     
-    # 计数器用于判断特征
-    sequence_features = 0
-    usecase_features = 0
-    class_features = 0
+    # 时序图特征
+    has_participant = any(keyword in code_lower for keyword in ['participant ','boundary ', 'control ', 'entity ', 'database '])
+    has_message = '->' in code_lower or '<-' in code_lower
     
-    for line in lines:
-        line = line.strip()
-        # 类图特征
-        if 'class ' in line and '{' in line:
-            class_features += 2
-            
-        # 时序图特征
-        if any(keyword in line for keyword in ['participant ', 'actor ', 'boundary ', 'control ', 'entity ', 'database ']):
-            sequence_features += 1
-        if 'activate ' in line or 'deactivate ' in line:
-            sequence_features += 2
-        if '->' in line or '<-' in line:
-            sequence_features += 1
-            
-        # 用例图特征
-        if 'usecase ' in line or '(use case)' in line:
-            usecase_features += 2
-        if 'actor ' in line and 'participant' not in line:  # actor在时序图中也可能出现
-            usecase_features += 1
-        if '<<extend>>' in line or '<<include>>' in line:
-            usecase_features += 2
-            
-    # 根据特征计数决定图表类型
-    if class_features > 0:
+    # 用例图特征
+    has_usecase = 'usecase ' in code_lower or 'rectangle' in code_lower
+    
+    # 判断图表类型
+    if has_class:
         return "class"
-    elif sequence_features > usecase_features:
+    elif has_participant and has_message:
         return "sequence"
-    elif usecase_features > 0:
+    elif has_usecase:
         return "usecase"
     
     return None
