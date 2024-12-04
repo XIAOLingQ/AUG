@@ -89,7 +89,7 @@ def main():
         /* 输入框容器：固定在底部，自适应主题背景色 */
         div[data-testid="stChatInput"] {
             position: fixed !important;          /* 固定定位 */
-            bottom: 0 !important;               /* 贴底部 */
+            bottom: 16px !important;               /* 贴底部 */
             left: 20px !important;              /* 左侧留白 */
             padding: 0 !important;              /* 移除内边距使容器与输入框大小一致 */
             width: calc(100% - 160px) !important; /* 宽度计算，预留更多重置按钮空间 */
@@ -221,7 +221,7 @@ def main():
     if not st.session_state.messages:
         st.markdown("""
             <div class="big-title">AUG</div>
-            <div class="subtitle">AI UML Generator</div>
+            <div class="subtitle">Automantic UML Generator</div>
         """, unsafe_allow_html=True)
     else:
         # 显示所有历史消息
