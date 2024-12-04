@@ -1,5 +1,10 @@
 import streamlit as st
-from stream.utils.uml import get_uml_diagram, create_sequence_template, get_existing_participants
+from stream.utils.uml import (
+    get_uml_diagram, 
+    create_sequence_template, 
+    get_existing_participants,
+    get_name_mapping
+)
 
 def render_sequence_diagram_editor(code_key, message_idx, current_code):
     """渲染时序图编辑器"""
@@ -108,9 +113,10 @@ def render_delete_participant(code_key, message_idx, current_code):
 
 def render_add_message(code_key, message_idx, current_code):
     """渲染添加消息界面"""
-    participants = get_existing_participants(current_code)
-    if participants:
-        participant_names = [p[0] for p in participants]
+    name_map = get_name_mapping(current_code)  # 获取名称映射
+    existing_participants = get_existing_participants(current_code)
+    if existing_participants:
+        participant_names = [p[0] for p in existing_participants]  # 使用原始名称
         
         source = st.selectbox(
             "发送者",
@@ -140,43 +146,89 @@ def render_add_message(code_key, message_idx, current_code):
         
         message_text = st.text_input("消息内容", key=f"message_text_{message_idx}")
         
+        # 激活/停用选项
+        activate = st.checkbox("激活接收者", key=f"activate_{message_idx}")
+        deactivate = st.checkbox("停用接收者", key=f"deactivate_{message_idx}")
+        
         if st.button("添加消息", key=f"add_message_{message_idx}", type="primary"):
             if not message_text:
                 st.error("请输入消息内容")
                 return
 
             lines = current_code.split('\n')
-            message_str = f'\n{source} {message_type[0]} {target}: {message_text}\n'
+            message_lines = []
             
-            insert_pos = next((i for i, line in enumerate(lines) 
-                if '@enduml' in line.lower()), len(lines)-1)
-            lines.insert(insert_pos, message_str)
+            # 获取源和目标的别名（如果有）
+            source_alias = next((alias for alias, name in name_map.items() if name == source), source)
+            target_alias = next((alias for alias, name in name_map.items() if name == target), target)
+            
+            if activate:
+                message_lines.append(f'activate "{target_alias}"')
+            
+            message_lines.append(f'"{source_alias}" {message_type[0]} "{target_alias}": {message_text}')
+            
+            if deactivate:
+                message_lines.append(f'deactivate "{target_alias}"')
+            
+            insert_pos = next(i for i, line in enumerate(lines) 
+                if '@enduml' in line.lower())
+            lines[insert_pos:insert_pos] = message_lines
+            
             st.session_state[code_key] = '\n'.join(lines)
             st.success("消息已添加")
             st.rerun()
-    else:
-        st.info("请先添加参与者")
 
 def render_delete_message(code_key, message_idx, current_code):
     """渲染删除消息界面"""
+    name_map = get_name_mapping(current_code)  # 获取名称映射
     messages = []
     lines = current_code.split('\n')
+    
+    # 创建反向映射（原始名称到别名）
+    reverse_map = {v: k for k, v in name_map.items()}
+    
     for line in lines:
         line_stripped = line.strip()
         if any(arrow in line_stripped for arrow in ['->', '-->', '->>', '-->>>', '->o', '->x']):
             if ':' in line_stripped:  # 确保是消息行
-                messages.append(line_stripped)
+                # 解析消息行
+                parts = line_stripped.split(':')
+                message_part = parts[0]
+                content_part = ':'.join(parts[1:])
+                
+                # 提取源和目标
+                message_parts = message_part.split()
+                if len(message_parts) >= 3:
+                    source = message_parts[0].strip('"')
+                    arrow = message_parts[1]
+                    target = message_parts[2].strip('"')
+                    
+                    # 使用原始名称（如果有映射）
+                    source_display = name_map.get(source, source)
+                    target_display = name_map.get(target, target)
+                    
+                    # 构建显示用的消息
+                    display_message = f'"{source_display}" {arrow} "{target_display}"{content_part}'
+                    messages.append((display_message, line_stripped))
     
     if messages:
         message_to_delete = st.selectbox(
             "选择要删除的消息",
-            options=messages,
+            options=[m[0] for m in messages],
             key=f"delete_message_{message_idx}",
-            format_func=lambda x: x.replace('->', '→').replace('-->', '⇢').replace('->>', '⇒').replace('-->>>', '⇛')
+            format_func=lambda x: x.replace('->', '→')
+                                  .replace('-->', '⇢')
+                                  .replace('->>', '⇒')
+                                  .replace('-->>>', '⇛')
+                                  .replace('->o', '→○')
+                                  .replace('->x', '→×')
+                                  .replace('"', '')  # 移除显示中的引号
         )
         
         if st.button("删除消息", key=f"delete_message_btn_{message_idx}", type="primary"):
-            new_lines = [line for line in lines if line.strip() != message_to_delete]
+            # 找到对应的原始行进行删除
+            original_line = next(m[1] for m in messages if m[0] == message_to_delete)
+            new_lines = [line for line in lines if line.strip() != original_line]
             st.session_state[code_key] = '\n'.join(new_lines)
             st.success("消息已删除")
             st.rerun()

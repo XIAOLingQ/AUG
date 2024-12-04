@@ -1,5 +1,8 @@
 import streamlit as st
-from stream.utils.uml import get_existing_classes
+from stream.utils.uml import (
+    get_existing_classes,
+    get_name_mapping,
+)
 
 def render_class_diagram_editor(code_key, message_idx, current_code):
     """渲染类图编辑器"""
@@ -100,7 +103,9 @@ def render_delete_class(code_key, message_idx, current_code):
 
 def render_add_relationship(code_key, message_idx, current_code):
     """渲染添加关系界面"""
+    name_map = get_name_mapping(current_code)  # 获取名称映射
     existing_classes = get_existing_classes(current_code)
+    
     if existing_classes:
         source = st.selectbox(
             "源类",
@@ -133,7 +138,12 @@ def render_add_relationship(code_key, message_idx, current_code):
         
         if st.button("添加关系", key=f"add_relation_{message_idx}", type="primary"):
             lines = current_code.split('\n')
-            relation_str = f"{source} {relation[0]} {target}"
+            
+            # 获取源和目标的别名（如果有）
+            source_alias = next((alias for alias, name in name_map.items() if name == source), source)
+            target_alias = next((alias for alias, name in name_map.items() if name == target), target)
+            
+            relation_str = f'"{source_alias}" {relation[0]} "{target_alias}"'
             if label.strip():
                 relation_str += f" : {label}"
             relation_str += "\n"

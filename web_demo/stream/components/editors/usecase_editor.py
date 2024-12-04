@@ -1,32 +1,7 @@
 import streamlit as st
-from stream.utils.uml import get_uml_diagram, create_usecase_template
+from stream.utils.uml import get_uml_diagram, create_usecase_template, get_existing_actors, get_existing_usecases, get_name_mapping
 import re
 
-
-def get_existing_actors(code):
-    """从 PlantUML 代码中提取现有的 Actor"""
-    actors = []
-    lines = code.split('\n')
-    for line in lines:
-        line = line.strip()
-        if line.startswith('actor '):
-            actor_name = line.split(' ')[1].strip('"')
-            actors.append(actor_name)
-    return actors
-
-def get_existing_usecases(code):
-    """从 PlantUML 代码中提取现有的用例"""
-    usecases = []
-    lines = code.split('\n')
-    for line in lines:
-        line = line.strip()
-        if line.startswith('usecase '):
-            # 提取双引号中的用例名称
-            match = re.search(r'usecase\s*"([^"]+)"', line)
-            if match:
-                usecase_name = match.group(1)
-                usecases.append(usecase_name)
-    return usecases
 
 def render_usecase_diagram_editor(code_key, message_idx, current_code):
     """渲染用例图编辑器"""
@@ -207,6 +182,7 @@ def render_delete_usecase(code_key, message_idx, current_code):
 
 def render_add_usecase_relation(code_key, message_idx, current_code):
     """渲染添加关系界面"""
+    name_map = get_name_mapping(current_code)  # 获取名称映射
     existing_actors = get_existing_actors(current_code)
     existing_usecases = get_existing_usecases(current_code)
     all_elements = existing_actors + existing_usecases
@@ -248,10 +224,12 @@ def render_add_usecase_relation(code_key, message_idx, current_code):
         
         if st.button("添加关系", key=f"add_relation_{message_idx}", type="primary"):
             lines = current_code.split('\n')
-            source_id = source.replace(" ", "_")
-            target_id = target.replace(" ", "_")
             
-            relation_str = f"{source_id} {relation[0]} {target_id}"
+            # 获取源和目标的别名（如果有）
+            source_alias = next((alias for alias, name in name_map.items() if name == source), source)
+            target_alias = next((alias for alias, name in name_map.items() if name == target), target)
+            
+            relation_str = f'"{source_alias}" {relation[0]} "{target_alias}"'
             if stereotype:
                 relation_str += f" : {stereotype}"
             elif label.strip():
