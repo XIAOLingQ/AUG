@@ -48,7 +48,22 @@ def create_message_container(role, content, message_idx):
                         st.session_state[code_key] = code
                     
                     if '@startuml' in code.lower() and '@enduml' in code.lower():
+                        # 显示当前代码的编辑器
                         render_uml_editor(code_key, message_idx)
+                        
+                        # 显示当前代码对应的图
+                        try:
+                            from stream.utils.uml import get_uml_diagram
+                            # 使用 session_state 中的代码，这样可以反映编辑器的更改
+                            current_code = st.session_state[code_key]
+                            current_diagram = get_uml_diagram(current_code)
+                            if current_diagram and isinstance(current_diagram, bytes):
+                                import io
+                                from PIL import Image
+                                image = Image.open(io.BytesIO(current_diagram))
+                                st.image(image)
+                        except Exception as e:
+                            st.error(f"无法显示图像: {str(e)}")
             else:
                 if stripped_part:
                     st.markdown(stripped_part)
@@ -73,7 +88,7 @@ async def get_bot_response(messages_history):
             return "无法获取有效响应"
                         
         except Exception as e:
-            print(f"API请求错误: {str(e)}")
+            print(f"API请求错��: {str(e)}")
             return f"发生错误: {str(e)}"
 
 def main():
@@ -202,7 +217,7 @@ def main():
             padding: 2rem 0;                      /* 上下内边距 */
             color: var(--primary-color);          /* 使用主题色 */
             font-size: 4rem;                      /* 大字体 */
-            font-weight: bold;                    /* 粗体 */
+            font-weight: bold;                    /* ����� */
             margin-top: 20vh;                     /* 顶部外边距 */
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2); /* 文字阴影 */
         }
@@ -235,7 +250,7 @@ def main():
             pass
 
     if prompt:
-        # 立即显示用户输入
+        # 立即显示���户输入
         with st.chat_message("user"):
             st.markdown(prompt)
             
@@ -243,7 +258,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是一个乐于解答各种问题的助手，你的任务是为用户提供专业、准确、有见地的建议。"},
+            {"role": "system", "content": "你是自动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模；用户会让你对生成的plantuml根据五大标准进行评价打分"},
         ] + st.session_state.messages
 
         try:

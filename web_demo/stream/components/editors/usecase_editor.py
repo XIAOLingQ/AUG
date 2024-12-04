@@ -1,5 +1,6 @@
 import streamlit as st
 from stream.utils.uml import get_uml_diagram, create_usecase_template
+import re
 
 
 def get_existing_actors(code):
@@ -20,8 +21,11 @@ def get_existing_usecases(code):
     for line in lines:
         line = line.strip()
         if line.startswith('usecase '):
-            usecase_name = ' '.join(line.split(' ')[1:]).strip('"')
-            usecases.append(usecase_name)
+            # 提取双引号中的用例名称
+            match = re.search(r'usecase\s*"([^"]+)"', line)
+            if match:
+                usecase_name = match.group(1)
+                usecases.append(usecase_name)
     return usecases
 
 def render_usecase_diagram_editor(code_key, message_idx, current_code):
@@ -145,33 +149,6 @@ def render_delete_actor(code_key, message_idx, current_code):
     else:
         st.info("没有可删除的 Actor")
 
-def render_add_usecase(code_key, message_idx, current_code):
-    """渲染添加用例界面"""
-    usecase_name = st.text_input("用例名称", key=f"usecase_name_{message_idx}")
-    description = st.text_area(
-        "描述 (可选)", 
-        height=100,
-        key=f"usecase_desc_{message_idx}"
-    )
-    
-    if st.button("添加用例", key=f"add_usecase_{message_idx}", type="primary"):
-        lines = current_code.split('\n')
-        usecase_str = f'\nusecase "{usecase_name}"'
-        if description.strip():
-            usecase_str += f' as {usecase_name.replace(" ", "_")}\n'
-            usecase_str += f'note right of {usecase_name.replace(" ", "_")}\n'
-            usecase_str += f'  {description}\n'
-            usecase_str += 'end note\n'
-        else:
-            usecase_str += '\n'
-        
-        insert_pos = next(i for i, line in enumerate(lines) 
-            if '@enduml' in line.lower())
-        lines.insert(insert_pos, usecase_str)
-        st.session_state[code_key] = '\n'.join(lines)
-        st.success(f"用例 '{usecase_name}' 已添加")
-        st.rerun()
-
 def render_delete_usecase(code_key, message_idx, current_code):
     """渲染删除用例界面"""
     existing_usecases = get_existing_usecases(current_code)
@@ -186,19 +163,40 @@ def render_delete_usecase(code_key, message_idx, current_code):
             lines = current_code.split('\n')
             new_lines = []
             skip_note = False
+            
             for line in lines:
+                should_skip = False
                 line_stripped = line.strip()
+                
+                # 检查是否是用例定义行
+                if line_stripped.startswith('usecase '):
+                    match = re.search(r'usecase\s*"([^"]+)"', line_stripped)
+                    if match and match.group(1) == usecase_to_delete:
+                        should_skip = True
+                
+                # 检查注释块
                 if line_stripped.startswith('note ') and usecase_to_delete.replace(" ", "_") in line_stripped:
                     skip_note = True
-                    continue
-                if skip_note and line_stripped == 'end note':
-                    skip_note = False
-                    continue
-                if (not skip_note and 
-                    not line_stripped.startswith(f'usecase "{usecase_to_delete}"') and
-                    not any(pattern.format(usecase_to_delete.replace(" ", "_")) in line_stripped for pattern in [
-                        '{}', '{} -->', '--> {}', '{} .>', '.> {}', '{} <|--', '--|> {}'
-                    ])):
+                    should_skip = True
+                elif skip_note:
+                    if line_stripped == 'end note':
+                        skip_note = False
+                    should_skip = True
+                
+                # 检查关系行
+                usecase_id = usecase_to_delete.replace(" ", "_")
+                if any(pattern in line_stripped for pattern in [
+                    f'{usecase_id} -->', 
+                    f'--> {usecase_id}',
+                    f'{usecase_id} .>',
+                    f'.> {usecase_id}',
+                    f'{usecase_id} --|>',
+                    f'--|> {usecase_id}',
+                    f'"{usecase_to_delete}"'
+                ]):
+                    should_skip = True
+                
+                if not should_skip:
                     new_lines.append(line)
             
             st.session_state[code_key] = '\n'.join(new_lines)
@@ -285,7 +283,9 @@ def render_delete_usecase_relation(code_key, message_idx, current_code):
             "选择要删除的关系",
             options=relations,
             key=f"delete_relation_{message_idx}",
-            format_func=lambda x: x.replace("-->", "→").replace(".>", "⊲").replace("--|>", "▷")
+            format_func=lambda x: (x.replace(" --> ", " → ")     # 使用箭头表示关联
+                                 .replace(" .> ", " ⊲ ")         # 使用三角形表示包含/扩展
+                                 .replace(" --|> ", " ⯈ "))      # 使用箭头表示泛化
         )
         
         if st.button("删除关系", key=f"delete_relation_btn_{message_idx}", type="primary"):

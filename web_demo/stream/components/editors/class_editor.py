@@ -173,7 +173,13 @@ def render_delete_relationship(code_key, message_idx, current_code):
                 "选择要删除的关系",
                 options=relations,
                 key=f"delete_relation_{message_idx}",
-                format_func=lambda x: x.replace("--", " → ").replace("|>", "继承").replace("*", "组合").replace("o", "聚合")
+                format_func=lambda x: (x.replace(" --|> ", " ⯈ ")
+                                     .replace(" --* ", " ◆ ")
+                                     .replace(" --o ", " ◇ ")
+                                     .replace(" <|-- ", " ⯇ ")
+                                     .replace(" *-- ", " ◆ ")
+                                     .replace(" o-- ", " ◇ ")
+                                     .replace(" -- ", " — "))
             )
             
             if st.button("删除关系", key=f"delete_relation_btn_{message_idx}", type="primary"):
