@@ -90,6 +90,8 @@ def get_uml_diagram(uml_code, format='png'):
         url = plantuml.get_url(uml_code)
         print(f"PlantUML URL: {url}")  # 打印 URL
         
+
+        
         response = requests.get(url)
         print(f"HTTP 状态码: {response.status_code}")  # 打印状态码
         
