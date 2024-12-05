@@ -36,7 +36,14 @@ def reset_chat():
     """Reset chat history"""
     st.session_state.should_reset = True
 
-def create_message_container(role, content, message_idx):
+def create_message_container(role, content, message_idx, is_new=False):
+    """
+    创建消息容器
+    :param role: 角色（user/assistant）
+    :param content: 消息内容
+    :param message_idx: 消息索
+    :param is_new: 是否是新消息，用于控制是否需要重新渲染
+    """
     with st.chat_message(role):
         parts = re.split(r'(```[\s\S]*?```)', content, flags=re.DOTALL)
         
@@ -51,22 +58,30 @@ def create_message_container(role, content, message_idx):
                 
                 if first_line.lower() in ['plantuml', 'uml']:
                     code = '\n'.join(code.split('\n')[1:])
-                    if code_key not in st.session_state:
+                    # 只在新消息时更新代码
+                    if is_new:
                         st.session_state[code_key] = code
                     
                     if '@startuml' in code.lower() and '@enduml' in code.lower():
-                        # 检查是否需要更新
-                        if st.session_state.needs_update:
-                            st.session_state.needs_update = False
-                            st.rerun()
-                        
-                        # 只显示编辑器，不显示图像
-                        render_uml_editor(code_key, message_idx)
+                        # 只在新消息时渲染编辑器
+                        if is_new:
+                            render_uml_editor(code_key, unique_key)
+                        else:
+                            # 对于旧消息，只显示代码
+                            st.code(st.session_state.get(code_key, code), language='plantuml')
+                else:
+                    # 对于非UML代码块，直接显示
+                    st.code(code, language=first_line.lower())
             else:
                 if stripped_part:
                     st.markdown(stripped_part)
 
-async def get_bot_response(messages_history):
+def create_empty_response_container():
+    """创建一个空的响应容器并返回它"""
+    # 只创建一个空的占位符，不创建聊天消息
+    return st.empty()
+
+async def get_bot_response(messages_history, placeholder):
     timeout = httpx.Timeout(30.0, connect=60.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
@@ -76,34 +91,56 @@ async def get_bot_response(messages_history):
                 timeout=timeout
             )
             
-            # 处理流式响应
             full_content = ""
-            # 按行分割响应内容并处理每一行
-            for line in response.text.split('\n'):
-                if not line.strip():  # 跳过空行
-                    continue
-                    
-                try:
-                    # 解析每一行的 JSON
-                    data = json.loads(line)
-                    if isinstance(data, dict):
-                        if data.get('status') == 200:
-                            content = data.get('data', {}).get('content', '')
-                            if content:
-                                full_content += content
-                        elif data.get('status') == 500:  # 处理错误响应
-                            error_msg = data.get('error', '未知错误')
-                            print(f"服务器错误: {error_msg}")
-                            return f"服务器错误: {error_msg}"
-                except json.JSONDecodeError as e:
-                    print(f"JSON解析错误: {str(e)}, 行内容: {line}")
-                    continue
+            buffer = ""
             
-            return full_content if full_content else "无法获取有效响应"
+            # 创建临时的聊天消息容器用于流式显示
+            with placeholder.chat_message("assistant"):
+                message_placeholder = st.empty()
+                
+                async for chunk in response.aiter_bytes():
+                    try:
+                        buffer += chunk.decode('utf-8')
                         
+                        while '\n' in buffer:
+                            line, buffer = buffer.split('\n', 1)
+                            if not line.strip():
+                                continue
+                            
+                            try:
+                                data = json.loads(line)
+                                if isinstance(data, dict):
+                                    if data.get('status') == 200:
+                                        content = data.get('data', {}).get('content', '')
+                                        if content:
+                                            print(f"收到内容: {content}")
+                                            full_content += content
+                                            # 使用占位符更新内容
+                                            message_placeholder.markdown(full_content + "▌")
+                                            await asyncio.sleep(0.05)
+                                            
+                                    elif data.get('status') == 500:
+                                        error_msg = data.get('error', '未知错误')
+                                        print(f"服务器错误: {error_msg}")
+                                        message_placeholder.markdown(f"服务器错误: {error_msg}")
+                                        return None, error_msg
+                            except json.JSONDecodeError as e:
+                                print(f"JSON解析错误: {str(e)}, 行内容: {line}")
+                                continue
+                    except UnicodeDecodeError as e:
+                        print(f"解码错误: {str(e)}")
+                        continue
+                
+                # 最后一次更新，移除光标
+                message_placeholder.markdown(full_content)
+                await asyncio.sleep(0.1)  # 短暂延迟确保最后的内容显示完成
+                return full_content, None
+                    
         except Exception as e:
             print(f"API请求错误: {str(e)}")
-            return f"发生错误: {str(e)}"
+            with placeholder.chat_message("assistant"):
+                st.error(f"发生错误: {str(e)}")
+            return None, str(e)
 
 def main():
     # 检查是否需要重置
@@ -120,7 +157,7 @@ def main():
             position: fixed !important;          /* 固定定位 */
             bottom: 16px !important;               /* 贴底部 */
             left: 20px !important;              /* 左侧留白 */
-            padding: 0 !important;              /* 移除内边距使容器与输入框大小一致 */
+            padding: 0 !important;              /* 移除内距使容器与输入框大小一致 */
             width: calc(100% - 160px) !important; /* 宽度计算，预留更多重置按钮空间 */
             z-index: 999 !important;            /* 确保在最上层 */
             background-color: transparent !important; /* 透明背景，继承系统主题 */
@@ -129,7 +166,7 @@ def main():
         
         /* 输入框本身：继承系统主题色 */
         div[data-testid="stChatInput"] input {
-            width: calc(100% - 20px) !important; /* 输入框宽��，留出发送按钮空间 */
+            width: calc(100% - 20px) !important; /* 输入框宽留发送按钮空间 */
             height: 100% !important;            /* 占满容器高度 */
             padding: 1rem !important;           /* 统一的内边距 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
@@ -145,13 +182,13 @@ def main():
         /* 输入框聚焦时的样式 */
         div[data-testid="stChatInput"] input:focus {
             outline: none !important;           /* 移除默认聚焦轮廓 */
-            border-color: var(--primary-color) !important; /* 使用主题色 */
+            border-color: var(--primary-color) !important; /* 用主题色 */
             box-shadow: 0 0 0 2px var(--primary-color-light) !important; /* 主题色阴影 */
         }
 
         /* 发送按钮容器 */
         div[data-testid="stChatInput"] button {
-            right: 140px !important;           /* 与重置按钮保持距离 */
+            right: 140px !important;           /* 与重置���钮保持距离 */
             background-color: var(--primary-color) !important; /* 使用主题色 */
             border-radius: 4px !important;     /* 圆角 */
             transition: all 0.3s ease !important; /* 过渡动画 */
@@ -165,7 +202,7 @@ def main():
             right: 20px !important;             /* 右侧留白 */
             z-index: 999 !important;            /* 确保在最上层 */
             margin: 0 !important;               /* 清除外边距 */
-            width: 100px !important;            /* 减小固定宽度 */
+            width: 100px !important;            /* 减小固宽度 */
             height: calc(1rem * 2 + 1.5em) !important; /* 与输入框等高 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
             border: 1px solid var(--primary-color) !important; /* 使用主题色边框 */
@@ -173,7 +210,7 @@ def main():
             border-radius: 4px !important;       /* 圆角 */
             transition: all 0.3s ease !important; /* 过渡动画 */
             min-width: 80px !important;          /* 最小宽度 */
-            font-size: 0.9rem !important;        /* 稍微减小字体 */
+            font-size: 0.9rem !important;        /* 稍微减小字 */
             padding: 0 8px !important;           /* 减小内边距 */
         }
 
@@ -205,10 +242,10 @@ def main():
         button[kind="primary"] {
             background-color: var(--primary-color) !important; /* 使用主题色 */
             border: none !important;              /* 无边框 */
-            color: white !important;              /* 白色文字 */
+            color: white !important;              /* 色文字 */
             padding: 0.5rem 1rem !important;      /* 内边距 */
             border-radius: 4px !important;        /* 圆角 */
-            transition: all 0.3s ease !important; /* 颜色过渡动画 */
+            transition: all 0.3s ease !important; /* 颜色过动画 */
         }
         
         /* 主要按钮悬停效果 */
@@ -220,7 +257,7 @@ def main():
         /* ===== 布局调整 ===== */
         /* 主容器：为固定元素预留空间 */
         section.main > div.block-container {
-            padding-bottom: calc(2rem + 1.5em) !important; /* 为输入框留出空间 */
+            padding-bottom: calc(2rem + 1.5em) !important; /* 为输入留出空间 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
         }
 
@@ -238,7 +275,7 @@ def main():
 
         /* 副标题：AI UML Generator */
         .subtitle {
-            text-align: center;                   /* 居中��齐 */
+            text-align: center;                   /* 居中齐 */
             color: var(--text-color-secondary);   /* 使次要文字颜色 */
             font-size: 1.5rem;                    /* 中等字体 */
             margin-top: 1rem;                     /* 顶部外边距 */
@@ -257,17 +294,16 @@ def main():
         for idx, message in enumerate(st.session_state.messages):
             create_message_container(message["role"], message["content"], idx)
 
-    # 创建固定在底部的输入区域
+    # 创建固定在底部输入区域
     with st.container():
         prompt = st.chat_input("在这里输入您的消息...")
-        if st.button("重置聊天", key="reset_button", type="secondary", on_click=reset_chat):
+        if st.button("置聊天", key="reset_button", type="secondary", on_click=reset_chat):
             pass
 
     if prompt:
-        # 立即显示户输入
-        with st.chat_message("user"):
-            st.markdown(prompt)
-            
+        # 立即显示用户输入
+        create_message_container("user", prompt, len(st.session_state.messages), True)
+        
         # 添加到消息历史
         st.session_state.messages.append({"role": "user", "content": prompt})
         
@@ -276,29 +312,29 @@ def main():
         ] + st.session_state.messages
 
         try:
-            # 显示加载状态
-            with st.spinner('正在思考中...'):
-                async def run_conversation():
-                    try:
-                        response = await get_bot_response(messages_history)
-                        return response
-                    except Exception as e:
-                        return f"处理响应时出错: {str(e)}"
+            # 创建临时占位符用于流式显示
+            temp_placeholder = create_empty_response_container()
+            
+            async def run_conversation():
+                try:
+                    response, error = await get_bot_response(messages_history, temp_placeholder)
+                    return response, error
+                except Exception as e:
+                    return None, f"处理响应时出错: {str(e)}"
 
-                # 运行异步任务
-                final_response = asyncio.run(run_conversation())
-                
-                if final_response:
-                    # 立即显示AI响应
-                    with st.chat_message("assistant"):
-                        st.markdown(final_response)
-                    st.session_state.messages.append({"role": "assistant", "content": final_response})
-                    
-                    # 标记需要更新
-                    st.session_state.needs_update = True
-                    
-                    # 使用 rerun 重新加载页面
-                    st.rerun()
+            # 运行异步任务获取完整响应
+            final_response, error = asyncio.run(run_conversation())
+            
+            # 清除临时占位符
+            temp_placeholder.empty()
+            
+            if final_response:
+                # 将完整响应添加到消息历史
+                st.session_state.messages.append({"role": "assistant", "content": final_response})
+                # 创建新的消息容器并渲染代码段
+                create_message_container("assistant", final_response, len(st.session_state.messages)-1, True)
+            elif error:
+                st.error(f"Error: {error}")
 
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
