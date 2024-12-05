@@ -1,0 +1,14 @@
+web_demo/client/node_modules/
+.idea/
+1.json
+2.json
+3.json
+ce.json
+__pycache__/
+*.mp4
+ferrari2017.pdf
+*.xlsx
+ce.py
+ce2.py
+.vscode/
+dataset/
