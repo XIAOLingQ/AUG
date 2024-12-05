@@ -18,6 +18,8 @@ llm_serve_url = "http://36.50.226.35:33642"
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
+    
+
 # 添加一个新的状态来追踪是否需要重置
 if 'should_reset' not in st.session_state:
     st.session_state.should_reset = False
