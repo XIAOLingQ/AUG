@@ -131,51 +131,89 @@ def render_delete_usecase(code_key, message_idx, current_code):
         usecase_to_delete = st.selectbox(
             "选择要删除的用例",
             options=existing_usecases,
-            key=f"delete_usecase_{message_idx}"
+            key=f"delete_usecase_{code_key}_{message_idx}"
         )
         
-        if st.button("删除用例", key=f"delete_usecase_btn_{message_idx}", type="primary"):
+        if st.button(
+            "删除用例", 
+            key=f"delete_usecase_btn_{code_key}_{message_idx}", 
+            type="primary"
+        ):
             lines = current_code.split('\n')
             new_lines = []
             skip_note = False
             
+            # 获取用例的所有可能标识符（原名和别名）
+            usecase_aliases = set()
+            usecase_aliases.add(usecase_to_delete)
+            
+            # 查找用例的别名
             for line in lines:
-                should_skip = False
                 line_stripped = line.strip()
+                if line_stripped.startswith('usecase '):
+                    if f'"{usecase_to_delete}"' in line_stripped and ' as ' in line_stripped:
+                        alias = line_stripped.split(' as ')[-1].strip()
+                        usecase_aliases.add(alias)
+            
+            # 添加带引号的版本
+            quoted_aliases = {f'"{alias}"' for alias in usecase_aliases}
+            usecase_aliases.update(quoted_aliases)
+            
+            for line in lines:
+                line_stripped = line.strip()
+                should_skip = False
                 
                 # 检查是否是用例定义行
                 if line_stripped.startswith('usecase '):
-                    match = re.search(r'usecase\s*"([^"]+)"', line_stripped)
-                    if match and match.group(1) == usecase_to_delete:
+                    if any(alias in line_stripped for alias in usecase_aliases):
                         should_skip = True
+                        continue
+                
+                # 检查是否是关系行
+                # 扩展关系检测模式，包括所有可能的关系形式
+                if any(pattern in line_stripped for pattern in ['-->', '.>', '--|>', '-']):
+                    # 提取关系的源和目标，支持更多格式
+                    # 匹配以下格式：
+                    # 1. "source" --> "target"
+                    # 2. source --> target
+                    # 3. actor --> UC1
+                    relation_patterns = [
+                        r'(["\w]+)\s*(?:-->|\.>|--\|>)\s*(["\w]+)',  # 标准格式
+                        r'"([^"]+)"\s*(?:-->|\.>|--\|>)\s*"([^"]+)"',  # 带引号格式
+                        r'(\w+)\s*(?:-->|\.>|--\|>)\s*(\w+)'  # 不带引号格式
+                    ]
+                    
+                    for pattern in relation_patterns:
+                        relation_match = re.match(pattern, line_stripped)
+                        if relation_match:
+                            source = relation_match.group(1).strip('"')
+                            target = relation_match.group(2).strip('"')
+                            
+                            # 检查源或目标是否匹配要删除的用例
+                            if (source in usecase_aliases or 
+                                target in usecase_aliases or 
+                                source.strip('"') in usecase_aliases or 
+                                target.strip('"') in usecase_aliases):
+                                should_skip = True
+                                print(f"跳过关系行: {line_stripped}")  # 调试输出
+                                break
                 
                 # 检查注释块
-                if line_stripped.startswith('note ') and usecase_to_delete.replace(" ", "_") in line_stripped:
-                    skip_note = True
-                    should_skip = True
+                if line_stripped.startswith('note '):
+                    if any(alias in line_stripped for alias in usecase_aliases):
+                        skip_note = True
+                        should_skip = True
                 elif skip_note:
                     if line_stripped == 'end note':
                         skip_note = False
                     should_skip = True
                 
-                # 检查关系行
-                usecase_id = usecase_to_delete.replace(" ", "_")
-                if any(pattern in line_stripped for pattern in [
-                    f'{usecase_id} -->', 
-                    f'--> {usecase_id}',
-                    f'{usecase_id} .>',
-                    f'.> {usecase_id}',
-                    f'{usecase_id} --|>',
-                    f'--|> {usecase_id}',
-                    f'"{usecase_to_delete}"'
-                ]):
-                    should_skip = True
-                
+                # 如果不需要跳过，则保留该行
                 if not should_skip:
                     new_lines.append(line)
             
             st.session_state[code_key] = '\n'.join(new_lines)
-            st.success(f"用例 '{usecase_to_delete}' 及其相关关系已被删除")
+            st.success(f"用例 '{usecase_to_delete}' 及其相关内容已被删除")
             st.rerun()
     else:
         st.info("没有可删除的用例")
@@ -249,25 +287,96 @@ def render_delete_usecase_relation(code_key, message_idx, current_code):
     """渲染删除关系界面"""
     relations = []
     lines = current_code.split('\n')
+    
+    # 获取所有用例的完整名称映射
+    usecase_names = {}
     for line in lines:
         line_stripped = line.strip()
-        if any(rel in line_stripped for rel in [
-            "-->", ".>", "--|>", "<<include>>", "<<extend>>"
-        ]):
-            relations.append(line_stripped)
+        if line_stripped.startswith('usecase '):
+            if ' as ' in line_stripped:
+                parts = line_stripped.split(' as ')
+                name_part = parts[0].strip()
+                alias = parts[1].strip()
+                name_match = re.search(r'"([^"]+)"', name_part)
+                if name_match:
+                    full_name = name_match.group(1)
+                    usecase_names[alias] = full_name
+            else:
+                name_match = re.search(r'"([^"]+)"', line_stripped)
+                if name_match:
+                    full_name = name_match.group(1)
+                    usecase_names[full_name] = full_name
+    
+    print("用例名称映射:", usecase_names)
+    
+    for line in lines:
+        line_stripped = line.strip()
+        print("处理行:", line_stripped)
+        
+        # 检查是否包含关系
+        if '-->' in line_stripped or '.>' in line_stripped or '--|>' in line_stripped:
+            # 使用正则表达式提取关系的源和目标
+            # 匹配形式：source --> target 或 "source" --> "target"
+            relation_match = re.match(r'(["\w]+)\s*(?:-->|\.>|--\|>)\s*(["\w]+)', line_stripped)
+            
+            if relation_match:
+                source = relation_match.group(1).strip('"')
+                target = relation_match.group(2).strip('"')
+                
+                print(f"提取的关系: {source} -> {target}")
+                
+                # 替换用例别名为完整名称
+                display_source = usecase_names.get(source, source)
+                display_target = usecase_names.get(target, target)
+                
+                print(f"源: {source} -> {display_source}")
+                print(f"目标: {target} -> {display_target}")
+                
+                # 构建显示用的关系文本
+                # 保持原始格式，只替换名称
+                display_line = line_stripped
+                
+                # 替换目标（需要考虑有无引号的情况）
+                if target in usecase_names:
+                    display_line = re.sub(
+                        rf'\b{target}\b',
+                        display_target,
+                        display_line
+                    )
+                
+                # 替换源
+                if source in usecase_names:
+                    display_line = re.sub(
+                        rf'\b{source}\b',
+                        display_source,
+                        display_line
+                    )
+                
+                print("显示行:", display_line)
+                relations.append((display_line, line_stripped))
+    
+    print("找到的关系:", relations)
     
     if relations:
         relation_to_delete = st.selectbox(
             "选择要删除的关系",
-            options=relations,
-            key=f"delete_relation_{message_idx}",
-            format_func=lambda x: (x.replace(" --> ", " → ")     # 使用箭头表示关联
-                                 .replace(" .> ", " ⊲ ")         # 使用三角形表示包含/扩展
-                                 .replace(" --|> ", " ⯈ "))      # 使用箭头表示泛化
+            options=[r[0] for r in relations],
+            key=f"delete_relation_{code_key}_{message_idx}",
+            format_func=lambda x: (x.replace(" --> ", " → ")
+                                 .replace(" -> ", " → ")
+                                 .replace(" .> ", " ⊲ ")
+                                 .replace(" --|> ", " ⯈ ")
+                                 .replace(" <|-- ", " ⯇ ")
+                                 .replace('"', ''))
         )
         
-        if st.button("删除关系", key=f"delete_relation_btn_{message_idx}", type="primary"):
-            new_lines = [line for line in lines if line.strip() != relation_to_delete]
+        if st.button(
+            "删除关系", 
+            key=f"delete_relation_btn_{code_key}_{message_idx}", 
+            type="primary"
+        ):
+            original_line = next(r[1] for r in relations if r[0] == relation_to_delete)
+            new_lines = [line for line in lines if line.strip() != original_line]
             st.session_state[code_key] = '\n'.join(new_lines)
             st.success("关系已删除")
             st.rerun()

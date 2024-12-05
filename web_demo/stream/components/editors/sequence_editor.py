@@ -42,17 +42,24 @@ def render_add_participant(code_key, message_idx, current_code):
             ("database", "数据库")
         ],
         format_func=lambda x: x[1],
-        key=f"participant_type_{message_idx}"
+        key=f"participant_type_{code_key}_{message_idx}"
     )
     
-    participant_name = st.text_input("参与者名称", key=f"participant_name_{message_idx}")
+    participant_name = st.text_input(
+        "参与者名称", 
+        key=f"participant_name_{code_key}_{message_idx}"
+    )
     description = st.text_area(
         "描述 (可选)", 
         height=100,
-        key=f"participant_desc_{message_idx}"
+        key=f"participant_desc_{code_key}_{message_idx}"
     )
     
-    if st.button("添加参与者", key=f"add_participant_{message_idx}", type="primary"):
+    if st.button(
+        "添加参与者", 
+        key=f"add_participant_btn_{code_key}_{message_idx}", 
+        type="primary"
+    ):
         if not participant_name:
             st.error("请输入参与者名称")
             return
@@ -80,33 +87,91 @@ def render_delete_participant(code_key, message_idx, current_code):
             "选择要删除的参与者",
             options=[p[0] for p in participants],
             format_func=lambda x: f"{x} ({dict(participants)[x]})",
-            key=f"delete_participant_{message_idx}"
+            key=f"delete_participant_{code_key}_{message_idx}"
         )
         
-        if st.button("删除参与者", key=f"delete_participant_btn_{message_idx}", type="primary"):
+        if st.button(
+            "删除参与者", 
+            key=f"delete_participant_btn_{code_key}_{message_idx}", 
+            type="primary"
+        ):
             lines = current_code.split('\n')
             new_lines = []
             skip_note = False
+            
+            # 获取参与者的所有可能标识符（原名和别名）
+            participant_aliases = set()  # 使用集合避免重复
+            participant_aliases.add(participant_to_delete)
+            
+            # 查找所有可能的别名
             for line in lines:
                 line_stripped = line.strip()
-                # 跳过参与者定义
-                if any(f'{ptype} "{participant_to_delete}"' in line_stripped 
-                      for ptype, _ in participants):
-                    continue
-                # 跳过注释
-                if line_stripped.startswith('note over') and participant_to_delete.replace(" ", "_") in line_stripped:
-                    skip_note = True
-                    continue
-                if skip_note and ':' in line_stripped:
-                    skip_note = False
-                    continue
-                # 跳过相关消息
-                if participant_to_delete.replace(" ", "_") in line_stripped and ('->' in line_stripped or '<-' in line_stripped):
-                    continue
-                new_lines.append(line)
+                # 检查是否是参与者定义行
+                if any(line_stripped.startswith(prefix) for prefix in [
+                    'participant ', 'actor ', 'boundary ', 
+                    'control ', 'entity ', 'database '
+                ]):
+                    # 如果包含要删除的参与者名称
+                    if f'"{participant_to_delete}"' in line_stripped:
+                        # 检查是否有别名
+                        if ' as ' in line_stripped:
+                            alias = line_stripped.split(' as ')[-1].strip()
+                            participant_aliases.add(alias)
+                            # 同时添加带下划线的版本
+                            participant_aliases.add(alias.replace(" ", "_"))
+            
+            # 添加原名的变体
+            participant_aliases.add(participant_to_delete.replace(" ", "_"))
+            
+            # 将所有名称都加上引号的版本
+            quoted_aliases = {f'"{alias}"' for alias in participant_aliases}
+            participant_aliases.update(quoted_aliases)
+            
+            for line in lines:
+                line_stripped = line.strip()
+                should_skip = False
+                
+                # 检查是否是参与者定义行
+                if any(line_stripped.startswith(prefix) for prefix in [
+                    'participant ', 'actor ', 'boundary ', 
+                    'control ', 'entity ', 'database '
+                ]):
+                    if any(alias in line_stripped for alias in participant_aliases):
+                        should_skip = True
+                        continue
+                
+                # 检查注释块
+                if line_stripped.startswith('note over'):
+                    if any(alias in line_stripped for alias in participant_aliases):
+                        skip_note = True
+                        should_skip = True
+                elif skip_note:
+                    if line_stripped.endswith('end note'):
+                        skip_note = False
+                    should_skip = True
+                
+                # 检查激活/停用行
+                if any(f'{action} {alias}' in line_stripped 
+                      for action in ['activate', 'deactivate']
+                      for alias in participant_aliases):
+                    should_skip = True
+                
+                # 检查消息行
+                if any(pattern.format(alias) in line_stripped 
+                      for alias in participant_aliases
+                      for pattern in [
+                          '{}', '{} ->', '-> {}', '{} -->', '--> {}',
+                          '{} ->>', '->> {}', '{} -->>', '-->> {}',
+                          '{} ->o', '->o {}', '{} ->x', '->x {}'
+                      ]):
+                    should_skip = True
+                
+                # 如果不需要跳过，则保留该行
+                if not should_skip:
+                    new_lines.append(line)
             
             st.session_state[code_key] = '\n'.join(new_lines)
-            st.success(f"参与者 '{participant_to_delete}' 及其相关消息已被删除")
+            st.success(f"参与者 '{participant_to_delete}' 及其相关内容已被删除")
             st.rerun()
     else:
         st.info("没有可删除的参与者")
@@ -121,7 +186,7 @@ def render_add_message(code_key, message_idx, current_code):
         source = st.selectbox(
             "发送者",
             options=participant_names,
-            key=f"source_{message_idx}"
+            key=f"source_{code_key}_{message_idx}"
         )
         
         message_type = st.selectbox(
@@ -135,22 +200,34 @@ def render_add_message(code_key, message_idx, current_code):
                 ("->x", "销毁消息")
             ],
             format_func=lambda x: x[1],
-            key=f"message_type_{message_idx}"
+            key=f"message_type_{code_key}_{message_idx}"
         )
         
         target = st.selectbox(
             "接收者",
             options=participant_names,
-            key=f"target_{message_idx}"
+            key=f"target_{code_key}_{message_idx}"
         )
         
-        message_text = st.text_input("消息内容", key=f"message_text_{message_idx}")
+        message_text = st.text_input(
+            "消息内容", 
+            key=f"message_text_{code_key}_{message_idx}"
+        )
         
-        # 激活/停用选项
-        activate = st.checkbox("激活接收者", key=f"activate_{message_idx}")
-        deactivate = st.checkbox("停用接收者", key=f"deactivate_{message_idx}")
+        activate = st.checkbox(
+            "激活接收者", 
+            key=f"activate_{code_key}_{message_idx}"
+        )
+        deactivate = st.checkbox(
+            "停用接收者", 
+            key=f"deactivate_{code_key}_{message_idx}"
+        )
         
-        if st.button("添加消息", key=f"add_message_{message_idx}", type="primary"):
+        if st.button(
+            "添加消息", 
+            key=f"add_message_btn_{code_key}_{message_idx}", 
+            type="primary"
+        ):
             if not message_text:
                 st.error("请输入消息内容")
                 return
@@ -158,7 +235,7 @@ def render_add_message(code_key, message_idx, current_code):
             lines = current_code.split('\n')
             message_lines = []
             
-            # 获取源和目标的别名（如果有）
+            # 获取源和目标的别名（如果有
             source_alias = next((alias for alias, name in name_map.items() if name == source), source)
             target_alias = next((alias for alias, name in name_map.items() if name == target), target)
             
@@ -180,7 +257,7 @@ def render_add_message(code_key, message_idx, current_code):
 
 def render_delete_message(code_key, message_idx, current_code):
     """渲染删除消息界面"""
-    name_map = get_name_mapping(current_code)  # 获取名称映射
+    name_map = get_name_mapping(current_code)  # 获取名映射
     messages = []
     lines = current_code.split('\n')
     
@@ -215,17 +292,21 @@ def render_delete_message(code_key, message_idx, current_code):
         message_to_delete = st.selectbox(
             "选择要删除的消息",
             options=[m[0] for m in messages],
-            key=f"delete_message_{message_idx}",
+            key=f"delete_message_{code_key}_{message_idx}",
             format_func=lambda x: x.replace('->', '→')
                                   .replace('-->', '⇢')
                                   .replace('->>', '⇒')
                                   .replace('-->>>', '⇛')
                                   .replace('->o', '→○')
                                   .replace('->x', '→×')
-                                  .replace('"', '')  # 移除显示中的引号
+                                  .replace('"', '')
         )
         
-        if st.button("删除消息", key=f"delete_message_btn_{message_idx}", type="primary"):
+        if st.button(
+            "删除消息", 
+            key=f"delete_message_btn_{code_key}_{message_idx}", 
+            type="primary"
+        ):
             # 找到对应的原始行进行删除
             original_line = next(m[1] for m in messages if m[0] == message_to_delete)
             new_lines = [line for line in lines if line.strip() != original_line]

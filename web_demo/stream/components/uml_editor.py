@@ -11,31 +11,39 @@ def render_uml_editor(code_key, message_idx):
     # 添加样式
     st.markdown("""
         <style>
+        /* ===== 图像容器样式 ===== */
         div[data-testid="stImage"] {
-            max-width: 600px !important;
-            margin: 0 auto !important;
+            max-width: auto !important;
+            margin: auto !important;
         }
         
+        /* ===== 可展开面板样式 ===== */
+        /* 面板容器 */
         div[data-testid="stExpander"] {
-            background-color: var(--primary-color-dark) !important;
+            background-color: var(--background-color) !important;  /* 使用系统背景色 */
+            border: 1px solid var(--primary-color) !important;    /* 添加边框 */
             border-radius: 4px;
             margin-bottom: 10px;
         }
         
+        /* 面板头部 */
         div[data-testid="stExpander"] > div:first-child {
-            background-color: var(--primary-color-dark) !important;
+            background-color: var(--primary-color-light) !important;  /* 使用浅色主题色 */
             border-radius: 4px 4px 0 0;
+            color: var(--text-color) !important;                     /* 使用系统文字颜色 */
         }
         
+        /* 面板内容区 */
         div[data-testid="stExpander"] > div:last-child {
-            background-color: var(--primary-color-dark) !important;
+            background-color: var(--background-color) !important;     /* 使用系统背景色 */
             border-radius: 0 0 4px 4px;
         }
         
+        /* ===== 下载按钮样式 ===== */
         .download-button {
             display: inline-block;
-            background-color: #1E88E5;
-            color: white;
+            background-color: var(--primary-color) !important;        /* 使用系统主题色 */
+            color: var(--background-color) !important;                /* 使用背景色作为文字颜色 */
             padding: 8px 16px;
             border: none;
             border-radius: 4px;
@@ -43,20 +51,58 @@ def render_uml_editor(code_key, message_idx):
             text-align: center;
             margin-top: 10px;
             width: 120px;
+            font-weight: bold;                                       /* 加粗文字 */
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);                 /* 添加文字阴影 */
+            transition: all 0.3s ease;                               /* 添加过渡动画 */
         }
         
+        /* 下载按钮悬停效果 */
+        .download-button:hover {
+            background-color: #4CAF50 !important;                    /* 使用浅绿色 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);                  /* 添加阴影 */
+            transform: translateY(-1px);                             /* 轻微上浮效果 */
+        }
+        
+        /* ===== 文本区域样式 ===== */
         .stTextArea textarea {
-            font-family: monospace;
+            font-family: monospace;                                   /* 等宽字体 */
             font-size: 14px;
             line-height: 1.4;
+            background-color: var(--background-color) !important;     /* 使用系统背景色 */
+            color: var(--text-color) !important;                     /* 使用系统文字颜色 */
+            border: 1px solid var(--primary-color) !important;       /* 添加边框 */
         }
         
+        /* ===== 标签页样式 ===== */
+        /* 标签页列表 */
         div[data-baseweb="tab-list"] {
-            background-color: var(--primary-color-dark) !important;
+            background-color: var(--background-color) !important;     /* 使用系统背景色 */
+            border-bottom: 2px solid var(--primary-color) !important; /* 添加底部边框 */
         }
         
+        /* 标签页面板 */
         div[data-baseweb="tab-panel"] {
-            background-color: var(--primary-color-dark) !important;
+            background-color: var(--background-color) !important;     /* 使用系统背景色 */
+            padding: 1rem;                                           /* 添加内边距 */
+            border: 1px solid var(--primary-color) !important;       /* 添加边框 */
+            border-top: none;                                        /* 移除顶部边框 */
+        }
+
+        /* ===== 按钮样式 ===== */
+        /* 所有类型的按钮通用样式 */
+        button[kind] {
+            background-color: var(--primary-color) !important;        /* 使用系统主题色 */
+            color: var(--background-color) !important;               /* 使用背景色作为文字颜色 */
+            font-weight: bold !important;                            /* 加粗文字 */
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;      /* 添加文字阴影 */
+            transition: all 0.3s ease !important;                    /* 添加过渡动画 */
+        }
+
+        /* 按钮悬停效果 */
+        button[kind]:hover {
+            background-color: #4CAF50 !important;                    /* 使用浅绿色 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;       /* 添加阴影 */
+            transform: translateY(-1px) !important;                  /* 轻微上浮效果 */
         }
         </style>
     """, unsafe_allow_html=True)
@@ -67,23 +113,31 @@ def render_uml_editor(code_key, message_idx):
     with edit_col:
         st.subheader("UML 编辑器")
         
+        # 为每个组件创建唯一的 key
+        edit_mode_key = f"edit_mode_{code_key}_{message_idx}"
+        
         # 添加编辑模式切换
         edit_mode = st.radio(
             "编辑模式",
             ["可视化编辑", "代码编辑"],
             horizontal=True,
-            key=f"edit_mode_{message_idx}"
+            key=edit_mode_key
         )
         
         if edit_mode == "代码编辑":
-            # 直接编辑 PlantUML 代码
-            new_code = st.text_area("PlantUML 代码", current_code, height=400)
+            # 为文本区域添加唯一的 key
+            text_area_key = f"text_area_{code_key}_{message_idx}"
+            new_code = st.text_area(
+                "PlantUML 代码", 
+                current_code, 
+                height=400,
+                key=text_area_key
+            )
             if new_code != current_code:
                 st.session_state[code_key] = new_code
                 current_code = new_code
         else:
             # 可视化编辑器
-            # 根据图表类型选择对应的编辑器
             diagram_type = get_diagram_type(current_code)
             if diagram_type == "class":
                 render_class_diagram_editor(code_key, message_idx, current_code)
@@ -117,4 +171,4 @@ def render_uml_editor(code_key, message_idx):
             '''
             st.markdown(download_link, unsafe_allow_html=True)
         else:
-            st.error("生成UML图失败，请检查代码语法")
+            st.error("生成UML图失败，请检查代码���法")
