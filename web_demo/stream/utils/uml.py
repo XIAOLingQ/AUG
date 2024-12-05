@@ -81,7 +81,7 @@ def get_name_mapping(code):
     return name_map
 
 # 初始化 PlantUML
-plantuml = PlantUML(url='http://10.183.66.145:8888/plantuml/png/')
+plantuml = PlantUML(url='http://10.176.141.113:8888/plantuml/png/')
 
 def get_uml_diagram(uml_code, format='png'):
     """生成 PlantUML 图表并返回 URL 和原始数据"""

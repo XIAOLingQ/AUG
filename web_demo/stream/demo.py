@@ -5,6 +5,7 @@ import re
 import httpx
 import sys
 import os
+import json
 
 # 添加项目根目录到 Python 路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -75,17 +76,33 @@ async def get_bot_response(messages_history):
                 timeout=timeout
             )
             
-            response_data = response.json()
-            print(f"原始响应: {response_data}")
+            # 处理流式响应
+            full_content = ""
+            # 按行分割响应内容并处理每一行
+            for line in response.text.split('\n'):
+                if not line.strip():  # 跳过空行
+                    continue
+                    
+                try:
+                    # 解析每一行的 JSON
+                    data = json.loads(line)
+                    if isinstance(data, dict):
+                        if data.get('status') == 200:
+                            content = data.get('data', {}).get('content', '')
+                            if content:
+                                full_content += content
+                        elif data.get('status') == 500:  # 处理错误响应
+                            error_msg = data.get('error', '未知错误')
+                            print(f"服务器错误: {error_msg}")
+                            return f"服务器错误: {error_msg}"
+                except json.JSONDecodeError as e:
+                    print(f"JSON解析错误: {str(e)}, 行内容: {line}")
+                    continue
             
-            if isinstance(response_data, dict) and response_data.get('status') == 200:
-                content = response_data.get('data', {}).get('content', '')
-                if content:
-                    return content
-            return "无法获取有效响应"
+            return full_content if full_content else "无法获取有效响应"
                         
         except Exception as e:
-            print(f"API请求错: {str(e)}")
+            print(f"API请求错误: {str(e)}")
             return f"发生错误: {str(e)}"
 
 def main():
@@ -112,11 +129,11 @@ def main():
         
         /* 输入框本身：继承系统主题色 */
         div[data-testid="stChatInput"] input {
-            width: calc(100% - 20px) !important; /* 输入框宽度，留出发送按钮空间 */
+            width: calc(100% - 20px) !important; /* 输入框宽��，留出发送按钮空间 */
             height: 100% !important;            /* 占满容器高度 */
             padding: 1rem !important;           /* 统一的内边距 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
-            border: 1px solid var(--primary-color) !important; /* 使���主题色作为边框 */
+            border: 1px solid var(--primary-color) !important; /* 使用主题色作为边框 */
             border-radius: 4px !important;      /* 圆角边框 */
             color: var(--text-color) !important; /* 使用系统主题文字颜色 */
             font-size: 1rem !important;         /* 标准字体大小 */
@@ -221,7 +238,7 @@ def main():
 
         /* 副标题：AI UML Generator */
         .subtitle {
-            text-align: center;                   /* 居中对齐 */
+            text-align: center;                   /* 居中��齐 */
             color: var(--text-color-secondary);   /* 使次要文字颜色 */
             font-size: 1.5rem;                    /* 中等字体 */
             margin-top: 1rem;                     /* 顶部外边距 */
@@ -255,7 +272,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是���动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打分"},
+            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打分"},
         ] + st.session_state.messages
 
         try:
