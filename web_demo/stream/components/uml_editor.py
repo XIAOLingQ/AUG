@@ -17,9 +17,19 @@ def render_uml_editor(code_key, message_idx):
         }
         
         div[data-testid="stExpander"] {
-            background-color: #1E1E1E;
+            background-color: var(--primary-color-dark) !important;
             border-radius: 4px;
             margin-bottom: 10px;
+        }
+        
+        div[data-testid="stExpander"] > div:first-child {
+            background-color: var(--primary-color-dark) !important;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        div[data-testid="stExpander"] > div:last-child {
+            background-color: var(--primary-color-dark) !important;
+            border-radius: 0 0 4px 4px;
         }
         
         .download-button {
@@ -39,6 +49,14 @@ def render_uml_editor(code_key, message_idx):
             font-family: monospace;
             font-size: 14px;
             line-height: 1.4;
+        }
+        
+        div[data-baseweb="tab-list"] {
+            background-color: var(--primary-color-dark) !important;
+        }
+        
+        div[data-baseweb="tab-panel"] {
+            background-color: var(--primary-color-dark) !important;
         }
         </style>
     """, unsafe_allow_html=True)
