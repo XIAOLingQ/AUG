@@ -22,6 +22,10 @@ if 'messages' not in st.session_state:
 if 'should_reset' not in st.session_state:
     st.session_state.should_reset = False
 
+# 添加一个新的状态来追踪图表更新
+if 'needs_update' not in st.session_state:
+    st.session_state.needs_update = False
+
 # Page config
 st.set_page_config(page_title="Chat Application", layout="wide")
 
@@ -48,6 +52,11 @@ def create_message_container(role, content, message_idx):
                         st.session_state[code_key] = code
                     
                     if '@startuml' in code.lower() and '@enduml' in code.lower():
+                        # 检查是否需要更新
+                        if st.session_state.needs_update:
+                            st.session_state.needs_update = False
+                            st.rerun()
+                        
                         # 只显示编辑器，不显示图像
                         render_uml_editor(code_key, message_idx)
             else:
@@ -105,7 +114,7 @@ def main():
             height: 100% !important;            /* 占满容器高度 */
             padding: 1rem !important;           /* 统一的内边距 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
-            border: 1px solid var(--primary-color) !important; /* 使用主题色作为边框 */
+            border: 1px solid var(--primary-color) !important; /* 使���主题色作为边框 */
             border-radius: 4px !important;      /* 圆角边框 */
             color: var(--text-color) !important; /* 使用系统主题文字颜色 */
             font-size: 1rem !important;         /* 标准字体大小 */
@@ -211,7 +220,7 @@ def main():
         /* 副标题：AI UML Generator */
         .subtitle {
             text-align: center;                   /* 居中对齐 */
-            color: var(--text-color-secondary);   /* 使���次要文字颜色 */
+            color: var(--text-color-secondary);   /* 使次要文字颜色 */
             font-size: 1.5rem;                    /* 中等字体 */
             margin-top: 1rem;                     /* 顶部外边距 */
         }
@@ -244,7 +253,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是自动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打分"},
+            {"role": "system", "content": "你是���动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打分"},
         ] + st.session_state.messages
 
         try:
@@ -265,9 +274,12 @@ def main():
                     with st.chat_message("assistant"):
                         st.markdown(final_response)
                     st.session_state.messages.append({"role": "assistant", "content": final_response})
-                
-                # 使用 rerun 重新加载页面
-                st.rerun()
+                    
+                    # 标记需要更新
+                    st.session_state.needs_update = True
+                    
+                    # 使用 rerun 重新加载页面
+                    st.rerun()
 
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
