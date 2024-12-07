@@ -6,6 +6,7 @@ import httpx
 import sys
 import os
 import json
+from datetime import datetime
 
 # 添加项目根目录到 Python 路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,8 +30,19 @@ if 'should_reset' not in st.session_state:
 if 'needs_update' not in st.session_state:
     st.session_state.needs_update = False
 
+# 添加一个新的状态变量
+if 'show_export_form' not in st.session_state:
+    st.session_state.show_export_form = False
+
+# 获取图标文件的绝对路径
+icon_path = os.path.join(os.path.dirname(__file__), "static", "images", "favicon.png")
+
 # Page config
-st.set_page_config(page_title="Chat Application", layout="wide")
+st.set_page_config(
+    page_title="AUG - AI UML Generator", 
+    page_icon=icon_path,
+    layout="wide"
+)
 
 def reset_chat():
     """Reset chat history"""
@@ -50,23 +62,24 @@ def create_message_container(role, content, message_idx):
                 first_line = code.split('\n')[0] if '\n' in code else ''
                 
                 if first_line.lower() in ['plantuml', 'uml']:
+                    # 提取实际的 UML 代码
                     code = '\n'.join(code.split('\n')[1:])
+                    # 确保代码被正确存储在 session_state 中
                     if code_key not in st.session_state:
                         st.session_state[code_key] = code
                     
                     if '@startuml' in code.lower() and '@enduml' in code.lower():
-                        # 检查是否需要更新
-                        if st.session_state.needs_update:
-                            st.session_state.needs_update = False
-                            st.rerun()
-                        
-                        # 只显示编辑器，不显示图像
                         render_uml_editor(code_key, message_idx)
             else:
                 if stripped_part:
                     st.markdown(stripped_part)
 
-async def get_bot_response(messages_history):
+def create_empty_response_container():
+    """创建一个空的响应容器并返回它"""
+    # 只创建一个空的占位符，不创建聊天息
+    return st.empty()
+
+async def get_bot_response(messages_history, placeholder):
     timeout = httpx.Timeout(30.0, connect=60.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
@@ -76,34 +89,55 @@ async def get_bot_response(messages_history):
                 timeout=timeout
             )
             
-            # 处理流式响应
             full_content = ""
-            # 按行分割响应内容并处理每一行
-            for line in response.text.split('\n'):
-                if not line.strip():  # 跳过空行
-                    continue
-                    
-                try:
-                    # 解析每一行的 JSON
-                    data = json.loads(line)
-                    if isinstance(data, dict):
-                        if data.get('status') == 200:
-                            content = data.get('data', {}).get('content', '')
-                            if content:
-                                full_content += content
-                        elif data.get('status') == 500:  # 处理错误响应
-                            error_msg = data.get('error', '未知错误')
-                            print(f"服务器错误: {error_msg}")
-                            return f"服务器错误: {error_msg}"
-                except json.JSONDecodeError as e:
-                    print(f"JSON解析错误: {str(e)}, 行内容: {line}")
-                    continue
+            buffer = ""
             
-            return full_content if full_content else "无法获取有效响应"
+            # 创建临时的聊天消息容器用于流式显示
+            with placeholder.chat_message("assistant"):
+                message_placeholder = st.empty()
+                
+                async for chunk in response.aiter_bytes():
+                    try:
+                        buffer += chunk.decode('utf-8')
                         
+                        while '\n' in buffer:
+                            line, buffer = buffer.split('\n', 1)
+                            if not line.strip():
+                                continue
+                            
+                            try:
+                                data = json.loads(line)
+                                if isinstance(data, dict):
+                                    if data.get('status') == 200:
+                                        content = data.get('data', {}).get('content', '')
+                                        if content:
+                                            full_content += content
+                                            # 使用占位符更新内容
+                                            message_placeholder.markdown(full_content + "▌")
+                                            await asyncio.sleep(0.05)
+                                            
+                                    elif data.get('status') == 500:
+                                        error_msg = data.get('error', '未知错误')
+                                        print(f"服务器错误: {error_msg}")
+                                        message_placeholder.markdown(f"服务器错误: {error_msg}")
+                                        return None, error_msg
+                            except json.JSONDecodeError as e:
+                                print(f"JSON解析错误: {str(e)}, 行内容: {line}")
+                                continue
+                    except UnicodeDecodeError as e:
+                        print(f"解码错误: {str(e)}")
+                        continue
+                
+                # 最后一次更新，移除光标
+                message_placeholder.markdown(full_content)
+                await asyncio.sleep(0.1)  # 短暂延迟确保最后的内容显示完成
+                return full_content, None
+                    
         except Exception as e:
             print(f"API请求错误: {str(e)}")
-            return f"发生错误: {str(e)}"
+            with placeholder.chat_message("assistant"):
+                st.error(f"发生错误: {str(e)}")
+            return None, str(e)
 
 def main():
     # 检查是否需要重置
@@ -117,10 +151,10 @@ def main():
         /* ===== 聊天输入框样式 ===== */
         /* 输入框容器：固定在底部，自适应主题背景色 */
         div[data-testid="stChatInput"] {
-            position: fixed !important;          /* 固定定位 */
+            position: fixed !important;          /* 定定位 */
             bottom: 16px !important;               /* 贴底部 */
             left: 20px !important;              /* 左侧留白 */
-            padding: 0 !important;              /* 移除内边距使容器与输入框大小一致 */
+            padding: 0 !important;              /* 移除内距使容器与输入框大小一致 */
             width: calc(100% - 160px) !important; /* 宽度计算，预留更多重置按钮空间 */
             z-index: 999 !important;            /* 确保在最上层 */
             background-color: transparent !important; /* 透明背景，继承系统主题 */
@@ -129,14 +163,14 @@ def main():
         
         /* 输入框本身：继承系统主题色 */
         div[data-testid="stChatInput"] input {
-            width: calc(100% - 20px) !important; /* 输入框宽��，留出发送按钮空间 */
+            width: calc(100% - 20px) !important; /* 输入框宽留发送按钮空间 */
             height: 100% !important;            /* 占满容器高度 */
             padding: 1rem !important;           /* 统一的内边距 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
             border: 1px solid var(--primary-color) !important; /* 使用主题色作为边框 */
             border-radius: 4px !important;      /* 圆角边框 */
             color: var(--text-color) !important; /* 使用系统主题文字颜色 */
-            font-size: 1rem !important;         /* 标准字体大小 */
+            font-size: 1rem !important;         /* 标字体大小 */
             line-height: 1.5 !important;        /* 行高 */
             transition: all 0.3s ease !important; /* 平滑过渡效果 */
             margin-right: 20px !important;      /* 与发送按钮的间距 */
@@ -145,7 +179,7 @@ def main():
         /* 输入框聚焦时的样式 */
         div[data-testid="stChatInput"] input:focus {
             outline: none !important;           /* 移除默认聚焦轮廓 */
-            border-color: var(--primary-color) !important; /* 使用主题色 */
+            border-color: var(--primary-color) !important; /* 用主题色 */
             box-shadow: 0 0 0 2px var(--primary-color-light) !important; /* 主题色阴影 */
         }
 
@@ -165,7 +199,7 @@ def main():
             right: 20px !important;             /* 右侧留白 */
             z-index: 999 !important;            /* 确保在最上层 */
             margin: 0 !important;               /* 清除外边距 */
-            width: 100px !important;            /* 减小固定宽度 */
+            width: 100px !important;            /* 减小固宽度 */
             height: calc(1rem * 2 + 1.5em) !important; /* 与输入框等高 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
             border: 1px solid var(--primary-color) !important; /* 使用主题色边框 */
@@ -173,14 +207,16 @@ def main():
             border-radius: 4px !important;       /* 圆角 */
             transition: all 0.3s ease !important; /* 过渡动画 */
             min-width: 80px !important;          /* 最小宽度 */
-            font-size: 0.9rem !important;        /* 稍微减小字体 */
+            font-size: 0.9rem !important;        /* 稍微减小字 */
             padding: 0 8px !important;           /* 减小内边距 */
         }
 
         /* 重置按钮悬停效果 */
         button[kind="secondary"]:hover {
-            background-color: var(--primary-color-light) !important; /* 使用浅色主题色 */
-            border-color: var(--primary-color) !important;
+            background-color: #4CAF50 !important;  /* 绿色背景 */
+            color: #FFD700 !important;  /* 保持金黄色文字 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            transform: translateY(-1px) !important;
         }
 
         /* 在小屏幕上调整布局 */
@@ -200,17 +236,6 @@ def main():
             }
         }
         
-        /* ===== 主要按钮样式 ===== */
-        /* 生成UML按钮：使用主题色 */
-        button[kind="primary"] {
-            background-color: var(--primary-color) !important; /* 使用主题色 */
-            border: none !important;              /* 无边框 */
-            color: white !important;              /* 白色文字 */
-            padding: 0.5rem 1rem !important;      /* 内边距 */
-            border-radius: 4px !important;        /* 圆角 */
-            transition: all 0.3s ease !important; /* 颜色过渡动画 */
-        }
-        
         /* 主要按钮悬停效果 */
         button[kind="primary"]:hover {
             background-color: var(--primary-color-dark) !important; /* 使用深色主题色 */
@@ -220,7 +245,7 @@ def main():
         /* ===== 布局调整 ===== */
         /* 主容器：为固定元素预留空间 */
         section.main > div.block-container {
-            padding-bottom: calc(2rem + 1.5em) !important; /* 为输入框留出空间 */
+            padding-bottom: calc(2rem + 1.5em) !important; /* 为输入留出空间 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
         }
 
@@ -229,7 +254,7 @@ def main():
         .big-title {
             text-align: center;                   /* 居中对齐 */
             padding: 2rem 0;                      /* 上下内边距 */
-            color: var(--primary-color);          /* 使用主题色 */
+            color: var(--primary-color);          /* 使用题色 */
             font-size: 4rem;                      /* 大字体 */
             font-weight: bold;                    /*  */
             margin-top: 20vh;                     /* 顶部外边距 */
@@ -238,13 +263,57 @@ def main():
 
         /* 副标题：AI UML Generator */
         .subtitle {
-            text-align: center;                   /* 居中��齐 */
+            text-align: center;                   /* 居中齐 */
             color: var(--text-color-secondary);   /* 使次要文字颜色 */
             font-size: 1.5rem;                    /* 中等字体 */
             margin-top: 1rem;                     /* 顶部外边距 */
         }
+
+        /* 导出按钮样式 */
+        .stButton button[data-testid="export-button"] {
+            position: fixed !important;
+            top: 800px !important;
+            left: 20px !important;
+            z-index: 999 !important;
+            margin: 0 !important;
+            width: 100px !important;
+            height: 38px !important;
+            background-color: var(--background-color) !important;
+            border: 1px solid var(--primary-color) !important;
+            color: var(--text-color) !important;
+            border-radius: 4px !important;
+            transition: all 0.3s ease !important;
+            font-size: 0.9rem !important;
+        }
+        
+        /* 导出按钮悬停效果 */
+        .stButton button[data-testid="export-button"]:hover {
+            background-color: #4CAF50 !important;
+            color: #FFD700 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            transform: translateY(-1px) !important;
+        }
+        
+        /* 导出表单样式 */
+        .stForm {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--background-color);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            width: 80%;
+            max-width: 600px;
+        }
         </style>
     """, unsafe_allow_html=True)
+
+    # 添加导出按钮到左上角
+    if st.button("导出对话", key="export_button", type="secondary"):
+        st.session_state.show_export_form = True
 
     # 如果没有消息历史，显示大标题
     if not st.session_state.messages:
@@ -263,42 +332,91 @@ def main():
         if st.button("重置聊天", key="reset_button", type="secondary", on_click=reset_chat):
             pass
 
+    # 添加导出表单
+    if st.session_state.show_export_form:
+        with st.form(key="export_form"):
+            st.subheader("导出对话")
+            instruction = st.text_area("任务描述", help="请描述这个对话的任务目标")
+            system = st.text_area("系统提示词", help="请输入系统提示词")
+            
+            if st.form_submit_button("确认导出"):
+                try:
+                    # 准备导出数据
+                    export_data = {
+                        "instruction": instruction,
+                        "input": st.session_state.messages[-1]["content"] if st.session_state.messages else "",
+                        "output": st.session_state.messages[-2]["content"] if len(st.session_state.messages) > 1 else "",
+                        "system": system,
+                        "history": [
+                            [msg["content"], st.session_state.messages[i+1]["content"]]
+                            for i, msg in enumerate(st.session_state.messages[:-1:2])
+                        ],
+                        "id": datetime.now().strftime("%Y%m%d%H%M%S")
+                    }
+                    
+                    # 写入文件
+                    export_file = "export.json"
+                    try:
+                        with open(export_file, 'r', encoding='utf-8') as f:
+                            existing_data = json.load(f)
+                            if not isinstance(existing_data, list):
+                                existing_data = []
+                    except (FileNotFoundError, json.JSONDecodeError):
+                        existing_data = []
+                    
+                    existing_data.append(export_data)
+                    
+                    with open(export_file, 'w', encoding='utf-8') as f:
+                        json.dump(existing_data, f, ensure_ascii=False, indent=4)
+                    
+                    st.success("对话已成功导出！")
+                    st.session_state.show_export_form = False
+                except Exception as e:
+                    st.error(f"导出失败：{str(e)}")
+            
+            if st.form_submit_button("取消"):
+                st.session_state.show_export_form = False
+
     if prompt:
         # 立即显示户输入
         with st.chat_message("user"):
             st.markdown(prompt)
-            
+        
         # 添加到消息历史
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打分"},
+            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打��"},
         ] + st.session_state.messages
 
         try:
             # 显示加载状态
             with st.spinner('正在思考中...'):
+                # 创建临时占位符用于流式显示
+                temp_placeholder = create_empty_response_container()
+                
                 async def run_conversation():
                     try:
-                        response = await get_bot_response(messages_history)
-                        return response
+                        response, error = await get_bot_response(messages_history, temp_placeholder)
+                        return response, error
                     except Exception as e:
-                        return f"处理响应时出错: {str(e)}"
+                        return None, f"处理响应时出错: {str(e)}"
 
-                # 运行异步任务
-                final_response = asyncio.run(run_conversation())
+                # 运行异步任务获取完整响应
+                final_response, error = asyncio.run(run_conversation())
+                
+                
+                # 清除临时占位符
+                temp_placeholder.empty()
                 
                 if final_response:
-                    # 立即显示AI响应
-                    with st.chat_message("assistant"):
-                        st.markdown(final_response)
+                    print(f"收到完整响应: {final_response}")
+                    # 将完整响应添加到消息历史
                     st.session_state.messages.append({"role": "assistant", "content": final_response})
-                    
-                    # 标记需要更新
-                    st.session_state.needs_update = True
-                    
-                    # 使用 rerun 重新加载页面
-                    st.rerun()
+                    # 创建新的���息容器并渲染代码段
+                    create_message_container("assistant", final_response, len(st.session_state.messages)-1)
+                elif error:
+                    st.error(f"Error: {error}")
 
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")

@@ -131,7 +131,7 @@ def get_diagram_type(code):
     has_class = 'class ' in code_lower and '{' in code_lower
     
     # 时序图特征
-    has_participant = any(keyword in code_lower for keyword in ['participant ','boundary ', 'control ', 'entity ', 'database '])
+    has_participant = any(keyword in code_lower for keyword in ['participant ','boundary ', 'control ', 'entity ', 'database ','alt'])
     has_message = '->' in code_lower or '<-' in code_lower
     
     # 用例图特征
