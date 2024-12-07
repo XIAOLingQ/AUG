@@ -140,14 +140,56 @@ async def get_bot_response(messages_history, placeholder):
             return None, str(e)
 
 def main():
-    # 检查是否需要重置
-    if st.session_state.should_reset:
-        st.session_state.messages = []
-        st.session_state.should_reset = False
+    # 在 header 区域添加按钮
+    with st.container():
+        st.button("提交对话", key="submit_chat_button", type="primary", 
+                 on_click=lambda: st.session_state.update({"show_export_form": True}))
     
+    # 更新按钮样式
+    st.markdown("""
+        <style>
+        /* 移除原来的按钮固定定位样式 */
+        button[data-testid="submit_chat_button"] {
+            position: relative !important;
+            top: auto !important;
+            right: auto !important;
+            width: 120px !important;
+            background-color: var(--primary-color) !important;
+            color: green !important;
+            border: none !important;
+            border-radius: 4px !important;
+            margin-top: 1rem !important;
+        }
+        
+        /* 其他样式保持不变... */
+        </style>
+    """, unsafe_allow_html=True)
+
     # 添加样式
     st.markdown("""
         <style>
+        /* 提交对话按钮样式 */
+        button[data-testid="submit_chat_button"] {
+            position: fixed !important;
+            top: 16px !important;
+            left: 16px !important;
+            z-index: 999 !important;
+            margin: 0 !important;
+            width: 120px !important;
+            background-color: var(--primary-color) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 4px !important;
+        }
+
+        /* 提交对话按钮悬停效果 */
+        button[data-testid="submit_chat_button"]:hover {
+            background-color: var(--primary-color-dark) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+            transform: translateY(-1px) !important;
+        }
+
+
         /* ===== 聊天输入框样式 ===== */
         /* 输入框容器：固定在底部，自适应主题背景色 */
         div[data-testid="stChatInput"] {
@@ -194,21 +236,16 @@ def main():
         /* ===== 重置按钮样式 ===== */
         /* 次要按钮：固定在右下角，跟随主题 */
         button[kind="secondary"] {
-            position: fixed !important;          /* 固定定位 */
-            bottom: 16px !important;            /* 距底部距离 */
-            right: 20px !important;             /* 右侧留白 */
-            z-index: 999 !important;            /* 确保在最上层 */
-            margin: 0 !important;               /* 清除外边距 */
-            width: 100px !important;            /* 减小固宽度 */
-            height: calc(1rem * 2 + 1.5em) !important; /* 与输入框等高 */
-            background-color: var(--background-color) !important; /* 使用系统主题背景色 */
-            border: 1px solid var(--primary-color) !important; /* 使用主题色边框 */
-            color: var(--text-color) !important; /* 使用系统主题文字颜色 */
-            border-radius: 4px !important;       /* 圆角 */
-            transition: all 0.3s ease !important; /* 过渡动画 */
-            min-width: 80px !important;          /* 最小宽度 */
-            font-size: 0.9rem !important;        /* 稍微减小字 */
-            padding: 0 8px !important;           /* 减小内边距 */
+            position: fixed !important;
+            bottom: 16px !important;
+            right: 0 !important;
+            z-index: 999 !important;
+            margin: 0 !important;
+            width: 120px !important;
+            background-color: #262730 !important;
+            border: 1px solid #4a4a4a !important;
+            color: white !important;
+            background-color: #0E1117 !important;
         }
 
         /* 重置按钮悬停效果 */
@@ -243,10 +280,10 @@ def main():
         }
         
         /* ===== 布局调整 ===== */
-        /* 主容器：为固定元素预留空间 */
+        /* 主容器：为固定元素预留 */
         section.main > div.block-container {
             padding-bottom: calc(2rem + 1.5em) !important; /* 为输入留出空间 */
-            background-color: var(--background-color) !important; /* 使用系统主题背景色 */
+            background-color: var(--background-color) !important; /* 使用系统主题景色 */
         }
 
         /* ===== 欢迎页面样式 ===== */
@@ -269,51 +306,76 @@ def main():
             margin-top: 1rem;                     /* 顶部外边距 */
         }
 
-        /* 导出按钮样式 */
-        .stButton button[data-testid="export-button"] {
+        /* ===== 导出按钮样式 ===== */
+        button[data-testid="export_button"] {
             position: fixed !important;
-            top: 800px !important;
-            left: 20px !important;
+            top: 16px !important;
+            left: 16px !important;
             z-index: 999 !important;
             margin: 0 !important;
-            width: 100px !important;
-            height: 38px !important;
-            background-color: var(--background-color) !important;
-            border: 1px solid var(--primary-color) !important;
-            color: var(--text-color) !important;
-            border-radius: 4px !important;
-            transition: all 0.3s ease !important;
-            font-size: 0.9rem !important;
+            width: 120px !important;
+            background-color: #262730 !important;
+            border: 1px solid #4a4a4a !important;
+            color: white !important;
+            background-color: #0E1117 !important;
         }
-        
+
         /* 导出按钮悬停效果 */
-        .stButton button[data-testid="export-button"]:hover {
-            background-color: #4CAF50 !important;
-            color: #FFD700 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-            transform: translateY(-1px) !important;
+        button[kind="primary"]:hover {
+            background-color: var(--primary-color-dark) !important; /* 深色主题 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important; /* 添加阴影 */
+            transform: translateY(-1px) !important;  /* 悬停效果 */
         }
+
         
-        /* 导出表单样式 */
+        /* 导出表单样式 - 统一使用深色主题 */
         .stForm {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: var(--background-color);
+            background-color: rgb(14, 17, 23) !important;  /* 深色背景 */
+            color: rgb(255, 255, 255) !important;  /* 白色文字 */
             padding: 2rem;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 1px solid var(--primary-color) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             z-index: 1000;
             width: 80%;
             max-width: 600px;
         }
+
+        /* 表单内部元素样式 */
+        .stForm input, .stForm textarea {
+            background-color: rgb(28, 32, 40) !important;  /* 深色输入框 */
+            color: rgb(255, 255, 255) !important;  /* 白色文字 */
+            border-color: var(--primary-color) !important;
+            caret-color: rgb(255, 255, 255) !important;  /* 白色光标 */
+        }
+
+        .stForm label, .stForm .stMarkdown {
+            color: rgb(255, 255, 255) !important;  /* 白色文字 */
+        }
+
+        /* 表单按钮样式 */
+        .stForm button {
+            background-color: rgb(28, 32, 40) !important;  /* 深色按钮背景 */
+            color: rgb(255, 255, 255) !important;  /* 白色文字 */
+            border-color: var(--primary-color) !important;
+        }
+
+        /* 按钮悬停效果 */
+        .stForm button:hover {
+            background-color: rgb(38, 42, 50) !important;  /* 稍浅一点的深色 */
+            border-color: var(--primary-color) !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    # 添加导出按钮到左上角
-    if st.button("导出对话", key="export_button", type="secondary"):
-        st.session_state.show_export_form = True
+    # 检查是否需要重置
+    if st.session_state.should_reset:
+        st.session_state.messages = []
+        st.session_state.should_reset = False
 
     # 如果没有消息历史，显示大标题
     if not st.session_state.messages:
@@ -341,28 +403,41 @@ def main():
             
             if st.form_submit_button("确认导出"):
                 try:
-                    # 准备导出数据
-                    export_data = {
-                        "instruction": instruction,
-                        "input": st.session_state.messages[-1]["content"] if st.session_state.messages else "",
-                        "output": st.session_state.messages[-2]["content"] if len(st.session_state.messages) > 1 else "",
-                        "system": system,
-                        "history": [
-                            [msg["content"], st.session_state.messages[i+1]["content"]]
-                            for i, msg in enumerate(st.session_state.messages[:-1:2])
-                        ],
-                        "id": datetime.now().strftime("%Y%m%d%H%M%S")
-                    }
-                    
-                    # 写入文件
-                    export_file = "export.json"
+                    # 读取现有数据以确定下一个ID
+                    export_file = f"export_{datetime.now().strftime('%Y%m%d')}.json"
                     try:
                         with open(export_file, 'r', encoding='utf-8') as f:
                             existing_data = json.load(f)
                             if not isinstance(existing_data, list):
                                 existing_data = []
+                            next_id = len(existing_data)
                     except (FileNotFoundError, json.JSONDecodeError):
                         existing_data = []
+                        next_id = 0
+                    
+                    # 获取消息历史，除了最后一组对话
+                    history = []
+                    for i in range(0, len(st.session_state.messages)-2, 2):
+                        if i+1 < len(st.session_state.messages):
+                            user_msg = st.session_state.messages[i]["content"]
+                            ai_msg = st.session_state.messages[i+1]["content"]
+                            history.append([user_msg, ai_msg])
+                    
+                    # 最后一组对话分别作为input和output
+                    last_user_msg = ""
+                    last_ai_msg = ""
+                    if len(st.session_state.messages) >= 2:
+                        last_user_msg = st.session_state.messages[-2]["content"]
+                        last_ai_msg = st.session_state.messages[-1]["content"]
+                    
+                    export_data = {
+                        "instruction": instruction,
+                        "input": last_user_msg,  # 用户的最后一条消息
+                        "output": last_ai_msg,   # AI的最后一条回复
+                        "system": system,
+                        "history": history,      # 之前的对话历史
+                        "id": next_id
+                    }
                     
                     existing_data.append(export_data)
                     
@@ -386,7 +461,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根据五大标准进行评价打��"},
+            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根��五大标准进行评价打"},
         ] + st.session_state.messages
 
         try:
@@ -411,9 +486,9 @@ def main():
                 
                 if final_response:
                     print(f"收到完整响应: {final_response}")
-                    # 将完整响应添加到消息历史
+                    # 将完整响应添到消息历史
                     st.session_state.messages.append({"role": "assistant", "content": final_response})
-                    # 创建新的���息容器并渲染代码段
+                    # 创建新的消息容器并渲染代码段
                     create_message_container("assistant", final_response, len(st.session_state.messages)-1)
                 elif error:
                     st.error(f"Error: {error}")
