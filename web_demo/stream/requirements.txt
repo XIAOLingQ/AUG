@@ -67,3 +67,5 @@ fastapi
 uvicorn
 torch
 transformers
+tiktoken
+accelerate==0.26.0
