@@ -3,6 +3,9 @@ import base64
 from plantuml import PlantUML
 import re
 
+# 初始化 PlantUML
+plantuml = PlantUML(url='http://36.50.226.35:27921/plantuml/png/')
+
 def create_usecase_template():
     """创建用例图的基本模板"""
     return """@startuml
@@ -80,8 +83,7 @@ def get_name_mapping(code):
                 name_map[alias] = original_name
     return name_map
 
-# 初始化 PlantUML
-plantuml = PlantUML(url='https://www.plantuml.com/plantuml/png/')
+
 
 def get_uml_diagram(uml_code, format='png'):
     """生成 PlantUML 图表并返回 URL 和原始数据"""
