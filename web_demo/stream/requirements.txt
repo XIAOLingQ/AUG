@@ -63,4 +63,3 @@ tzdata==2024.2
 urllib3==1.26.20
 watchdog==6.0.0
 wrapt==1.16.0
-zhipuai==2.1.5.20230904

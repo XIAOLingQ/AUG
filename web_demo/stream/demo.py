@@ -20,8 +20,6 @@ llm_serve_url = "http://36.50.226.35:33642"
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
-    
-
 # 添加一个新的状态来追踪是否需要重置
 if 'should_reset' not in st.session_state:
     st.session_state.should_reset = False
@@ -461,7 +459,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是根据用户输入的案例进行需求分析和使用plantuml代码进行需求建模。用户会让你对生成的plantuml根��五大标准进行评价打"},
+            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是协助用户进行需求建模。"},
         ] + st.session_state.messages
 
         try:

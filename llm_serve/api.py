@@ -20,7 +20,7 @@ app = FastAPI()
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # 模型路径
-MODEL_PATH = "/root/autodl-tmp/glm-4-9b-chat/"
+MODEL_PATH = "/root/autodl-tmp/aug/"
 
 # 检查是否使用 GPU
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -75,6 +75,8 @@ async def generate_stream(messages: List[Dict[str, str]]) -> AsyncGenerator[str,
 async def generate_response(request: ChatRequest):
     if not request.messages:
         raise HTTPException(status_code=400, detail="消息列表不能为空")
+    
+    print(request.messages)
     
     print("收到请求，开始处理...")
     
