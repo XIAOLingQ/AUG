@@ -15,7 +15,7 @@ from stream.components.uml_editor import render_uml_editor
 
 # Constants
 DEFAULT_USER_ID = str(uuid.uuid4())
-llm_serve_url = "http://36.50.226.35:33642"
+llm_serve_url = "http://36.50.226.35:58444"
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -43,8 +43,33 @@ st.set_page_config(
 )
 
 def reset_chat():
-    """Reset chat history"""
+    """Reset chat history and all UML related states"""
     st.session_state.should_reset = True
+    st.session_state.messages = []  # 清除聊天记录
+    st.session_state.current_code = ""  # 清除当前代码
+    
+    # 清除所有与 UML 编辑器相关的 session state
+    keys_to_delete = []
+    for key in st.session_state.keys():
+        if any(key.startswith(prefix) for prefix in [
+            "attr_",        # 属性相关
+            "method_",      # 方法相关
+            "modify_",      # 修改类相关
+            "last_modified_", # 最后修改的类
+            "usecase_",     # 用例图相关
+            "actor_",       # Actor相关
+            "relation_",    # 关系相关
+            "participant_", # 时序图参与者相关
+            "message_",     # 时序图消息相关
+            "code_key",     # 代码相关
+            "diagram_"      # 图表相关
+        ]):
+            keys_to_delete.append(key)
+    
+    # 删除收集到的键
+    for key in keys_to_delete:
+        if key in st.session_state:
+            del st.session_state[key]
 
 def create_message_container(role, content, message_idx):
     with st.chat_message(role):
@@ -53,15 +78,27 @@ def create_message_container(role, content, message_idx):
         for i, part in enumerate(parts):
             stripped_part = part.strip()
             if stripped_part.startswith('```') and stripped_part.endswith('```'):
-                unique_key = f"{role}_{message_idx}_{i}"
-                code_key = f"code_{unique_key}"
-                
                 code = stripped_part.strip('`').strip()
                 first_line = code.split('\n')[0] if '\n' in code else ''
                 
                 if first_line.lower() in ['plantuml', 'uml']:
                     # 提取实际的 UML 代码
                     code = '\n'.join(code.split('\n')[1:])
+                    
+                    # 根据图表类型生成不同的 key
+                    diagram_type = "unknown"
+                    if '@startuml' in code.lower() and '@enduml' in code.lower():
+                        if 'class' in code.lower():
+                            diagram_type = "class"
+                        elif 'usecase' in code.lower() or 'actor' in code.lower():
+                            diagram_type = "usecase"
+                        elif 'participant' in code.lower() or '->' in code.lower():
+                            diagram_type = "sequence"
+                    
+                    # 使用图表类型作为 key 的一部分
+                    unique_key = f"{role}_{message_idx}_{i}_{diagram_type}"
+                    code_key = f"code_{unique_key}"
+                    
                     # 确保代码被正确存储在 session_state 中
                     if code_key not in st.session_state:
                         st.session_state[code_key] = code
@@ -207,7 +244,7 @@ def main():
             height: 100% !important;            /* 占满容器高度 */
             padding: 1rem !important;           /* 统一的内边距 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
-            border: 1px solid var(--primary-color) !important; /* 使用主题色作为边框 */
+            border: 1px solid var(--primary-color) !important; /* ���用主题色作为边框 */
             border-radius: 4px !important;      /* 圆角边框 */
             color: var(--text-color) !important; /* 使用系统主题文字颜色 */
             font-size: 1rem !important;         /* 标字体大小 */
@@ -266,7 +303,7 @@ def main():
             }
             
             button[kind="secondary"] {
-                width: 80px !important;         /* 更小的重置按钮 */
+                width: 80px !important;         /* 更小的��置按钮 */
                 right: 10px !important;         /* 减小右侧间距 */
             }
         }
@@ -382,7 +419,7 @@ def main():
             <div class="subtitle">Automantic UML Generator</div>
         """, unsafe_allow_html=True)
     else:
-        # 显示所有历史消息
+        # 显示所���历史消息
         for idx, message in enumerate(st.session_state.messages):
             create_message_container(message["role"], message["content"], idx)
 
