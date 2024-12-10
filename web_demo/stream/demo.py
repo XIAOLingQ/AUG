@@ -37,7 +37,7 @@ icon_path = os.path.join(os.path.dirname(__file__), "static", "images", "favicon
 
 # Page config
 st.set_page_config(
-    page_title="AUG - AI UML Generator", 
+    page_title="AUG - Automantic UML Generator", 
     page_icon=icon_path,
     layout="wide"
 )
