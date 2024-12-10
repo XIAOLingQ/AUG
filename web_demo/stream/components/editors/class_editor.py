@@ -386,10 +386,15 @@ def render_modify_class(code_key, message_idx, current_code):
                 continue
             
             # 收集并暂时跳过相关关系
-            if any(pattern.format(class_to_modify) in line_stripped for pattern in [
-                '{}', '{}--', '--{}', '{}--|>', '<|--{}', '{}--*', '*--{}', '{}--o', 'o--{}'
-            ]):
-                # 保存关系定义
+            # 检查是否包含类名（带引号或不带引号）
+            class_patterns = [
+                f'"{class_to_modify}"',  # 带引号
+                f' {class_to_modify} ',  # 不带引号，两边有空格
+                f' {class_to_modify}(',  # 不带引号，后面跟括号
+                f'^{class_to_modify} ',  # 不带引号，行首
+                f' {class_to_modify}$'   # 不带引号，行尾
+            ]
+            if any(pattern in f" {line_stripped} " for pattern in class_patterns):
                 relationships.append(line)
                 continue
             
@@ -428,20 +433,18 @@ def render_modify_class(code_key, message_idx, current_code):
         
         # 更新并添加关系
         for relationship in relationships:
-            # 处理带引号的类名
             updated_relationship = relationship
-            if f'"{class_to_modify}"' in relationship:
-                updated_relationship = relationship.replace(f'"{class_to_modify}"', f'"{new_class_name}"')
-            # 处理不带引号的类名
-            elif class_to_modify in relationship:
-                updated_relationship = relationship.replace(class_to_modify, new_class_name)
             
-            # 确保关系中的类名都有引号
-            parts = updated_relationship.split()
-            for i, part in enumerate(parts):
-                if part in [new_class_name, class_to_modify] and not part.startswith('"'):
-                    parts[i] = f'"{part}"'
-            updated_relationship = ' '.join(parts)
+            # 处理类名在关系定义中的情况
+            if any(rel in relationship for rel in ['<|--', '--|>', '--', '--*', '*--', '--o', 'o--']):
+                # 保持原有的引号状态
+                if f'"{class_to_modify}"' in relationship:
+                    updated_relationship = relationship.replace(f'"{class_to_modify}"', f'"{new_class_name}"')
+                else:
+                    updated_relationship = relationship.replace(f' {class_to_modify} ', f' {new_class_name} ')
+                    updated_relationship = updated_relationship.replace(f' {class_to_modify}(', f' {new_class_name}(')
+                    updated_relationship = updated_relationship.replace(f'^{class_to_modify} ', f'{new_class_name} ')
+                    updated_relationship = updated_relationship.replace(f' {class_to_modify}$', f' {new_class_name}')
             
             new_lines.insert(insert_pos, updated_relationship)
         
@@ -508,7 +511,7 @@ def render_add_relationship(code_key, message_idx, current_code):
     
     if existing_classes:
         source = st.selectbox(
-            "源���",
+            "源",
             options=existing_classes,
             key=f"source_{message_idx}"
         )

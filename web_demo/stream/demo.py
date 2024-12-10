@@ -498,7 +498,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是协助用户进行需求建模。(请使用标准PlantUML语言进行绘制)"},
+            {"role": "system", "content": "你是自动化需求建模工具AUG，你的任务是协助用户进行需求建模。(请使用标准PlantUML语言进行绘制)"},
         ] + st.session_state.messages
 
         try:
