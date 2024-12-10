@@ -15,7 +15,7 @@ from stream.components.uml_editor import render_uml_editor
 
 # Constants
 DEFAULT_USER_ID = str(uuid.uuid4())
-llm_serve_url = "http://36.50.226.35:58444"
+llm_serve_url = "http://36.50.226.35:50743"
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -46,11 +46,11 @@ def reset_chat():
     """Reset chat history and all UML related states"""
     st.session_state.should_reset = True
     st.session_state.messages = []  # 清除聊天记录
-    st.session_state.current_code = ""  # 清除当前代码
     
     # 清除所有与 UML 编辑器相关的 session state
     keys_to_delete = []
     for key in st.session_state.keys():
+        # 添加 code_key 相关的匹配模式
         if any(key.startswith(prefix) for prefix in [
             "attr_",        # 属性相关
             "method_",      # 方法相关
@@ -61,9 +61,11 @@ def reset_chat():
             "relation_",    # 关系相关
             "participant_", # 时序图参与者相关
             "message_",     # 时序图消息相关
-            "code_key",     # 代码相关
-            "diagram_"      # 图表相关
-        ]):
+            "code_",        # 代码相关，修改为完整前缀
+            "diagram_",     # 图表相关
+            "text_area_",   # 文本区域相关
+            "edit_mode_"    # 编辑模式相关
+        ]) or "code_key" in key:  # 特别检查包含 code_key 的键
             keys_to_delete.append(key)
     
     # 删除收集到的键
@@ -244,7 +246,7 @@ def main():
             height: 100% !important;            /* 占满容器高度 */
             padding: 1rem !important;           /* 统一的内边距 */
             background-color: var(--background-color) !important; /* 使用系统主题背景色 */
-            border: 1px solid var(--primary-color) !important; /* ���用主题色作为边框 */
+            border: 1px solid var(--primary-color) !important; /* 用主题色作为边框 */
             border-radius: 4px !important;      /* 圆角边框 */
             color: var(--text-color) !important; /* 使用系统主题文字颜色 */
             font-size: 1rem !important;         /* 标字体大小 */
@@ -269,7 +271,7 @@ def main():
         }
         
         /* ===== 重置按钮样式 ===== */
-        /* 次要按钮：固定在右下角，跟随主题 */
+        /* 次要按钮：固定在右下角，跟���主题 */
         button[kind="secondary"] {
             position: fixed !important;
             bottom: 16px !important;
@@ -303,7 +305,7 @@ def main():
             }
             
             button[kind="secondary"] {
-                width: 80px !important;         /* 更小的��置按钮 */
+                width: 80px !important;         /* 更小的置按钮 */
                 right: 10px !important;         /* 减小右侧间距 */
             }
         }
@@ -419,7 +421,7 @@ def main():
             <div class="subtitle">Automantic UML Generator</div>
         """, unsafe_allow_html=True)
     else:
-        # 显示所���历史消息
+        # 显示所历史消息
         for idx, message in enumerate(st.session_state.messages):
             create_message_container(message["role"], message["content"], idx)
 
@@ -496,13 +498,13 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是协助用户进行需求建模。"},
+            {"role": "system", "content": "你是动化需求建模工具AUG，你的任务是协助用户进行需求建模。(请使用标准PlantUML语言进行绘制)"},
         ] + st.session_state.messages
 
         try:
             # 显示加载状态
             with st.spinner('正在思考中...'):
-                # 创建临时占位符用于流式显示
+                # 创建��时占位符用于流式显示
                 temp_placeholder = create_empty_response_container()
                 
                 async def run_conversation():
@@ -531,7 +533,7 @@ def main():
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
 
-    # 添加处理编辑器消息的 JavaScript
+    # 添��处理编辑器消息的 JavaScript
     st.markdown("""
     <script>
     window.addEventListener('message', function(event) {
