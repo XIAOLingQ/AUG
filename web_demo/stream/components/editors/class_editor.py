@@ -426,7 +426,7 @@ def render_modify_class(code_key, message_idx, current_code):
         
         new_class += "}\n"
         
-        # 添加新类
+        # 添���新类
         insert_pos = next(i for i, line in enumerate(new_lines) 
             if '@enduml' in line.lower())
         new_lines.insert(insert_pos, new_class)
@@ -435,7 +435,7 @@ def render_modify_class(code_key, message_idx, current_code):
         for relationship in relationships:
             updated_relationship = relationship
             
-            # 处理类名在关系定义中的情况
+            # 处理类名在关系定义的情况
             if any(rel in relationship for rel in ['<|--', '--|>', '--', '--*', '*--', '--o', 'o--']):
                 # 保持原有的引号状态
                 if f'"{class_to_modify}"' in relationship:
@@ -511,7 +511,7 @@ def render_add_relationship(code_key, message_idx, current_code):
     
     if existing_classes:
         source = st.selectbox(
-            "源",
+            "源类",
             options=existing_classes,
             key=f"source_{message_idx}"
         )
@@ -537,22 +537,72 @@ def render_add_relationship(code_key, message_idx, current_code):
             key=f"target_{message_idx}"
         )
         
+        # 添加关系多重性选项
+        source_multiplicity = st.text_input("源类多重性(可选，如: 1, 0..*, 1..*)", key=f"source_mult_{message_idx}")
+        target_multiplicity = st.text_input("目标类多重性(可选，如: 1, 0..*, 1..*)", key=f"target_mult_{message_idx}")
+        
         label = st.text_input("关系标签(可选)", key=f"label_{message_idx}")
         
         if st.button("添加关系", key=f"add_relation_{message_idx}", type="primary"):
             lines = current_code.split('\n')
             
-            # 获取源目标的别名（如果有）
+            # 获取源和目标的别名（如果有）
             source_alias = next((alias for alias, name in name_map.items() if name == source), source)
             target_alias = next((alias for alias, name in name_map.items() if name == target), target)
             
-            relation_str = f'"{source_alias}" {relation[0]} "{target_alias}"'
-            if label.strip():
-                relation_str += f" : {label}"
-            relation_str += "\n"
+            # 构建关系字符串
+            relation_parts = []
+            relation_parts.append(f'"{source_alias}"')
+            if source_multiplicity.strip():
+                relation_parts.append(f'"{source_multiplicity}"')
+            relation_parts.append(relation[0])
+            if target_multiplicity.strip():
+                relation_parts.append(f'"{target_multiplicity}"')
+            relation_parts.append(f'"{target_alias}"')
             
-            insert_pos = next(i for i, line in enumerate(lines) 
-                if '@enduml' in line.lower())
+            relation_str = ' '.join(relation_parts)
+            if label.strip():
+                relation_str += f' : {label}'
+            relation_str += '\n'
+            
+            # 找到所有类定义的开始和结束位置
+            class_positions = []  # 存储每个类的开始和结束位置
+            in_class = False
+            class_start = -1
+            for i, line in enumerate(lines):
+                line_stripped = line.strip()
+                if line_stripped.startswith('class '):
+                    in_class = True
+                    class_start = i
+                elif line_stripped == '}' and in_class:
+                    in_class = False
+                    class_positions.append((class_start, i))
+            
+            # 找到第一个独立的属性或方法定义的位置（在类定义之外的）
+            method_start_pos = len(lines)
+            for i, line in enumerate(lines):
+                line_stripped = line.strip()
+                # 确保不在任何类定义内部
+                if not any(start <= i <= end for start, end in class_positions):
+                    if (line_stripped.startswith('+') or 
+                        line_stripped.startswith('-') or 
+                        line_stripped.startswith('#')) or \
+                       ('(' in line_stripped and ')' in line_stripped):
+                        method_start_pos = i
+                        break
+            
+            # 选择合适的插入位置：在最后一个类定义之后，但在第一个独立方法/属性之前
+            if class_positions:
+                last_class_end = max(pos[1] for pos in class_positions)
+                insert_pos = min(last_class_end + 1, method_start_pos)
+                
+                # 确保插入位置不在任何类的内部
+                while any(start <= insert_pos <= end for start, end in class_positions):
+                    insert_pos = max(pos[1] + 1 for pos in class_positions if pos[1] >= insert_pos)
+            else:
+                insert_pos = next(i for i, line in enumerate(lines) 
+                    if '@enduml' in line.lower())
+            
             lines.insert(insert_pos, relation_str)
             st.session_state[code_key] = '\n'.join(lines)
             st.success("关系已添加")
@@ -568,18 +618,22 @@ def render_delete_relationship(code_key, message_idx, current_code):
         lines = current_code.split('\n')
         for line in lines:
             line_stripped = line.strip()
-            if any(rel[0] in line_stripped for rel in [
-                ("--", "关联"),
-                ("--|>", "继承"),
-                ("--*", "组合"),
-                ("--o", "聚合"),
-                ("<|--", "反向继承"),
-                ("*--", "反向组合"),
-                ("o--", "反向聚合")
-            ]):
-                parts = line_stripped.split()
-                if len(parts) >= 3 and any(c in existing_classes for c in parts):
-                    relations.append(line_stripped)
+            # 检查是否包含类名和关系符号
+            has_class = any(f'"{c}"' in line_stripped or f' {c} ' in line_stripped 
+                          or line_stripped.startswith(f'{c} ')
+                          or line_stripped.endswith(f' {c}')
+                          for c in existing_classes)
+            
+            # 检查是否包含关系符号
+            has_relation = any(rel in line_stripped for rel in [
+                '--', '--|>', '<|--', '--*', '*--', '--o', 'o--'
+            ])
+            
+            if has_class and has_relation:
+                # 移除多余的空格并标准化空格
+                normalized_line = ' '.join(line_stripped.split())
+                if normalized_line not in relations:  # 避免重复
+                    relations.append(normalized_line)
         
         if relations:
             relation_to_delete = st.selectbox(
@@ -596,7 +650,12 @@ def render_delete_relationship(code_key, message_idx, current_code):
             )
             
             if st.button("删除关系", key=f"delete_relation_btn_{message_idx}", type="primary"):
-                new_lines = [line for line in lines if line.strip() != relation_to_delete]
+                # 标准化要删除的关系
+                normalized_to_delete = ' '.join(relation_to_delete.split())
+                # 保留不匹配的行
+                new_lines = [line for line in lines 
+                           if ' '.join(line.strip().split()) != normalized_to_delete]
+                
                 st.session_state[code_key] = '\n'.join(new_lines)
                 st.success("关系已删除")
                 st.rerun()
