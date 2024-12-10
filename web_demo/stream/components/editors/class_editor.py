@@ -369,9 +369,11 @@ def render_modify_class(code_key, message_idx, current_code):
         st.rerun()
     
     if st.button("保存修改", key=f"save_modify_{message_idx}", type="primary"):
-        # 删除原有类及其关系
+        # 删除原有类定义
         new_lines = []
         skip_class = False
+        relationships = []  # 存储所有关系
+        
         for line in lines:
             line_stripped = line.strip()
             
@@ -383,10 +385,12 @@ def render_modify_class(code_key, message_idx, current_code):
                 skip_class = False
                 continue
             
-            # 跳过相关关系
+            # 收集并暂时跳过相关关系
             if any(pattern.format(class_to_modify) in line_stripped for pattern in [
                 '{}', '{}--', '--{}', '{}--|>', '<|--{}', '{}--*', '*--{}', '{}--o', 'o--{}'
             ]):
+                # 保存关系定义
+                relationships.append(line)
                 continue
             
             if not skip_class:
@@ -422,13 +426,24 @@ def render_modify_class(code_key, message_idx, current_code):
             if '@enduml' in line.lower())
         new_lines.insert(insert_pos, new_class)
         
-        # 更新关系（将原类名替换为新类名）
-        if class_to_modify != new_class_name:
-            for i, line in enumerate(new_lines):
-                if any(pattern.format(class_to_modify) in line for pattern in [
-                    '{}', '{}--', '--{}', '{}--|>', '<|--{}', '{}--*', '*--{}', '{}--o', 'o--{}'
-                ]):
-                    new_lines[i] = line.replace(class_to_modify, new_class_name)
+        # 更新并添加关系
+        for relationship in relationships:
+            # 处理带引号的类名
+            updated_relationship = relationship
+            if f'"{class_to_modify}"' in relationship:
+                updated_relationship = relationship.replace(f'"{class_to_modify}"', f'"{new_class_name}"')
+            # 处理不带引号的类名
+            elif class_to_modify in relationship:
+                updated_relationship = relationship.replace(class_to_modify, new_class_name)
+            
+            # 确保关系中的类名都有引号
+            parts = updated_relationship.split()
+            for i, part in enumerate(parts):
+                if part in [new_class_name, class_to_modify] and not part.startswith('"'):
+                    parts[i] = f'"{part}"'
+            updated_relationship = ' '.join(parts)
+            
+            new_lines.insert(insert_pos, updated_relationship)
         
         st.session_state[code_key] = '\n'.join(new_lines)
         
@@ -493,7 +508,7 @@ def render_add_relationship(code_key, message_idx, current_code):
     
     if existing_classes:
         source = st.selectbox(
-            "源类",
+            "源���",
             options=existing_classes,
             key=f"source_{message_idx}"
         )
@@ -524,7 +539,7 @@ def render_add_relationship(code_key, message_idx, current_code):
         if st.button("添加关系", key=f"add_relation_{message_idx}", type="primary"):
             lines = current_code.split('\n')
             
-            # 获取源��目标的别名（如果有）
+            # 获取源目标的别名（如果有）
             source_alias = next((alias for alias, name in name_map.items() if name == source), source)
             target_alias = next((alias for alias, name in name_map.items() if name == target), target)
             
@@ -580,7 +595,7 @@ def render_delete_relationship(code_key, message_idx, current_code):
             if st.button("删除关系", key=f"delete_relation_btn_{message_idx}", type="primary"):
                 new_lines = [line for line in lines if line.strip() != relation_to_delete]
                 st.session_state[code_key] = '\n'.join(new_lines)
-                st.success("关系���删除")
+                st.success("关系已删除")
                 st.rerun()
         else:
             st.info("没有可删除的关系")

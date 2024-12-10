@@ -15,7 +15,7 @@ from stream.components.uml_editor import render_uml_editor
 
 # Constants
 DEFAULT_USER_ID = str(uuid.uuid4())
-llm_serve_url = "http://36.50.226.35:50743"
+llm_serve_url = "http://36.50.226.35:33642"
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
