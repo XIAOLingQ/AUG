@@ -1,6 +1,7 @@
 import streamlit as st
 from stream.utils.uml import get_uml_diagram, create_usecase_template, get_existing_actors, get_existing_usecases, get_name_mapping
 import re
+import time
 
 
 def render_usecase_diagram_editor(code_key, message_idx, current_code):
@@ -219,69 +220,69 @@ def render_delete_usecase(code_key, message_idx, current_code):
         st.info("没有可删除的用例")
 
 def render_add_usecase_relation(code_key, message_idx, current_code):
-    """渲染添加关系界面"""
-    name_map = get_name_mapping(current_code)  # 获取名称映射
-    existing_actors = get_existing_actors(current_code)
-    existing_usecases = get_existing_usecases(current_code)
-    all_elements = existing_actors + existing_usecases
+    """渲染添加用例关系的界面"""
+    st.subheader("添加关系")
     
-    if all_elements:
-        source = st.selectbox(
-            "源元素",
-            options=all_elements,
-            key=f"source_{message_idx}"
-        )
-        
-        relation = st.selectbox(
-            "关系类型", 
-            [
-                ("-->", "关联"),
-                (".>", "包含/扩展"),
-                ("--|>", "泛化")
-            ],
-            format_func=lambda x: f"{x[0]} ({x[1]})",
-            key=f"relation_{message_idx}"
-        )
-        
-        target = st.selectbox(
-            "目标元素",
-            options=all_elements,
-            key=f"target_{message_idx}"
-        )
-        
-        if relation[0] == ".>":
-            stereotype = st.selectbox(
-                "构造型",
-                ["<<include>>", "<<extend>>"],
-                key=f"stereotype_{message_idx}"
-            )
-        else:
-            stereotype = None
-        
-        label = st.text_input("关系标签(可选)", key=f"label_{message_idx}")
-        
-        if st.button("添加关系", key=f"add_relation_{message_idx}", type="primary"):
+    # 获取现有的Actor和用例
+    actors = get_existing_actors(current_code)
+    usecases = get_existing_usecases(current_code)
+    name_map = get_name_mapping(current_code)
+    
+    # 合并所有可能的源和目标
+    all_elements = actors + usecases
+    
+    # 生成唯一的时间戳
+    timestamp = int(time.time() * 1000)
+    
+    # 源选择
+    source = st.selectbox(
+        "源元素",
+        [name_map.get(elem, elem) for elem in all_elements],
+        key=f"source_{code_key}_{timestamp}"
+    )
+    
+    # 关系类型选择
+    relation_type = st.selectbox(
+        "关系类型",
+        ["-->>", "-->", ".>>", "..>", "<|--", "*--", "o--"],
+        key=f"relation_type_{code_key}_{timestamp}"
+    )
+    
+    # 目标选择
+    target = st.selectbox(
+        "目标元素",
+        [name_map.get(elem, elem) for elem in all_elements],
+        key=f"target_{code_key}_{timestamp}"
+    )
+    
+    # 关系描述（可选）
+    description = st.text_input(
+        "关系描述（可选）",
+        key=f"relation_desc_{code_key}_{timestamp}"
+    )
+    
+    # 添加按钮
+    if st.button("添加关系", key=f"add_relation_{code_key}_{timestamp}"):
+        if source and target:
+            # 反向查找原始名称
+            source_original = next((k for k, v in name_map.items() if v == source), source)
+            target_original = next((k for k, v in name_map.items() if v == target), target)
+            
+            # 构建关系语句
+            relation = f"{source_original} {relation_type}"
+            if description:
+                relation += f" : {description}"
+            relation += f" {target_original}"
+            
+            # 在@enduml之前插入新关系
             lines = current_code.split('\n')
+            insert_index = next(i for i, line in enumerate(lines) if '@enduml' in line)
+            lines.insert(insert_index, relation)
             
-            # 获取源和目标的别名（如果有）
-            source_alias = next((alias for alias, name in name_map.items() if name == source), source)
-            target_alias = next((alias for alias, name in name_map.items() if name == target), target)
-            
-            relation_str = f'"{source_alias}" {relation[0]} "{target_alias}"'
-            if stereotype:
-                relation_str += f" : {stereotype}"
-            elif label.strip():
-                relation_str += f" : {label}"
-            relation_str += "\n"
-            
-            insert_pos = next(i for i, line in enumerate(lines) 
-                if '@enduml' in line.lower())
-            lines.insert(insert_pos, relation_str)
+            # 更新代码
             st.session_state[code_key] = '\n'.join(lines)
-            st.success("关系已添加")
+            st.success(f"已添加关系：{relation}")
             st.rerun()
-    else:
-        st.info("请先添加 Actor 或用例")
 
 def render_delete_usecase_relation(code_key, message_idx, current_code):
     """渲染删除关系界面"""

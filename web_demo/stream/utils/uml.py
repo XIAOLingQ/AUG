@@ -4,7 +4,7 @@ from plantuml import PlantUML
 import re
 
 # 初始化 PlantUML
-plantuml = PlantUML(url='http://36.50.226.35:27921/plantuml/png/')
+plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
 
 def create_usecase_template():
     """创建用例图的基本模板"""

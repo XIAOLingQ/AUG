@@ -15,7 +15,7 @@ from stream.components.uml_editor import render_uml_editor
 
 # Constants
 DEFAULT_USER_ID = str(uuid.uuid4())
-llm_serve_url = "http://36.50.226.35:33642"
+llm_serve_url = "http://5.181.225.107:19548"
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -155,7 +155,7 @@ async def get_bot_response(messages_history, placeholder):
                                             
                                     elif data.get('status') == 500:
                                         error_msg = data.get('error', '未知错误')
-                                        print(f"服务器错误: {error_msg}")
+                                        print(f"服务���错误: {error_msg}")
                                         message_placeholder.markdown(f"服务器错误: {error_msg}")
                                         return None, error_msg
                             except json.JSONDecodeError as e:
@@ -270,8 +270,8 @@ def main():
             transition: all 0.3s ease !important; /* 过渡动画 */
         }
         
-        /* ===== 重置按钮样式 ===== */
-        /* 次要按钮：固定在右下角，跟���主题 */
+        /* ===== 重置按��样式 ===== */
+        /* 次要按钮：固定在右下角，跟主题 */
         button[kind="secondary"] {
             position: fixed !important;
             bottom: 16px !important;
@@ -401,7 +401,7 @@ def main():
             border-color: var(--primary-color) !important;
         }
 
-        /* 按钮悬停效果 */
+        /* 按钮悬���效果 */
         .stForm button:hover {
             background-color: rgb(38, 42, 50) !important;  /* 稍浅一点的深色 */
             border-color: var(--primary-color) !important;
@@ -504,7 +504,7 @@ def main():
         try:
             # 显示加载状态
             with st.spinner('正在思考中...'):
-                # 创建��时占位符用于流式显示
+                # 创建时占位符用于流式显示
                 temp_placeholder = create_empty_response_container()
                 
                 async def run_conversation():
@@ -533,7 +533,7 @@ def main():
         except Exception as e:
             st.error(f"Error getting response from API: {str(e)}")
 
-    # 添��处理编辑器消息的 JavaScript
+    # 添加处理编辑器消息的 JavaScript
     st.markdown("""
     <script>
     window.addEventListener('message', function(event) {
