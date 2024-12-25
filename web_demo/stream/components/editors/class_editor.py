@@ -300,16 +300,16 @@ def render_modify_class(code_key, message_idx, current_code):
                 key=f"modify_attr_type_{message_idx}_{i}",
                 label_visibility="collapsed"
             )
-        with cols[3]:
-            if st.button("删除", key=f"modify_del_attr_{message_idx}_{i}"):
-                attrs_list.pop(i)
-                st.session_state[f"modify_attrs_list_{message_idx}"] = attrs_list
-                st.rerun()
+        # with cols[3]:
+        #     if st.button("删除", key=f"modify_del_attr_{message_idx}_{i}"):
+        #         attrs_list.pop(i)
+        #         st.session_state[f"modify_attrs_list_{message_idx}"] = attrs_list
+        #         st.rerun()
     
-    if st.button("添加属性", key=f"modify_add_attr_{message_idx}"):
-        attrs_list.append({"visibility": "+", "name": "", "type": ""})
-        st.session_state[f"modify_attrs_list_{message_idx}"] = attrs_list
-        st.rerun()
+    # if st.button("添加属性", key=f"modify_add_attr_{message_idx}"):
+    #     attrs_list.append({"visibility": "+", "name": "", "type": ""})
+    #     st.session_state[f"modify_attrs_list_{message_idx}"] = attrs_list
+    #     st.rerun()
     
     # 方法列表
     st.subheader("方法列表")
@@ -357,18 +357,23 @@ def render_modify_class(code_key, message_idx, current_code):
                 label_visibility="collapsed",
                 help="格式: param1: Type1, param2: Type2"
             )
-        with cols[4]:
-            if st.button("删除", key=f"modify_del_method_{message_idx}_{i}"):
-                methods_list.pop(i)
-                st.session_state[f"modify_methods_list_{message_idx}"] = methods_list
-                st.rerun()
+        # with cols[4]:
+        #     if st.button("删除", key=f"modify_del_method_{message_idx}_{i}"):
+        #         methods_list.pop(i)
+        #         st.session_state[f"modify_methods_list_{message_idx}"] = methods_list
+        #         st.rerun()
     
-    if st.button("添加方法", key=f"modify_add_method_{message_idx}"):
-        methods_list.append({"visibility": "+", "name": "", "return_type": "", "params": ""})
-        st.session_state[f"modify_methods_list_{message_idx}"] = methods_list
-        st.rerun()
+    # if st.button("添加方法", key=f"modify_add_method_{message_idx}"):
+    #     methods_list.append({"visibility": "+", "name": "", "return_type": "", "params": ""})
+    #     st.session_state[f"modify_methods_list_{message_idx}"] = methods_list
+    #     st.rerun()
     
     if st.button("保存修改", key=f"save_modify_{message_idx}", type="primary"):
+        # 检查新类名是否已存在（排除当前正在修改的类）
+        if new_class_name != class_to_modify and new_class_name in get_existing_classes(current_code):
+            st.error(f"类名 '{new_class_name}' 已存在")
+            return
+
         # 删除原有类定义
         new_lines = []
         skip_class = False
@@ -386,22 +391,20 @@ def render_modify_class(code_key, message_idx, current_code):
                 continue
             
             # 收集并暂时跳过相关关系
-            # 检查是否包含类名（带引号或不带引号）
-            class_patterns = [
-                f'"{class_to_modify}"',  # 带引号
-                f' {class_to_modify} ',  # 不带引号，两边有空格
-                f' {class_to_modify}(',  # 不带引号，后面跟括号
-                f'^{class_to_modify} ',  # 不带引号，行首
-                f' {class_to_modify}$'   # 不带引号，行尾
-            ]
-            if any(pattern in f" {line_stripped} " for pattern in class_patterns):
-                relationships.append(line)
-                continue
+            if any(rel in line_stripped for rel in ['<|--', '--|>', '--', '--*', '*--', '--o', 'o--']):
+                # 检查是否包含要修改的类名
+                if class_to_modify in line_stripped:
+                    relationships.append(line)
+                    continue
             
             if not skip_class:
                 new_lines.append(line)
         
         # 添加修改后的类
+        insert_pos = next((i for i, line in enumerate(new_lines) 
+            if '@enduml' in line.lower()), len(new_lines))
+        
+        # 添加修改后的类定义
         new_class = f"\nclass {new_class_name} {{\n"
         
         # 添加属性
@@ -426,25 +429,29 @@ def render_modify_class(code_key, message_idx, current_code):
         
         new_class += "}\n"
         
-        # 添���新类
-        insert_pos = next(i for i, line in enumerate(new_lines) 
-            if '@enduml' in line.lower())
+        # 插入修改后的类
         new_lines.insert(insert_pos, new_class)
         
         # 更新并添加关系
         for relationship in relationships:
             updated_relationship = relationship
             
-            # 处理类名在关系定义的情况
-            if any(rel in relationship for rel in ['<|--', '--|>', '--', '--*', '*--', '--o', 'o--']):
-                # 保持原有的引号状态
-                if f'"{class_to_modify}"' in relationship:
-                    updated_relationship = relationship.replace(f'"{class_to_modify}"', f'"{new_class_name}"')
-                else:
-                    updated_relationship = relationship.replace(f' {class_to_modify} ', f' {new_class_name} ')
-                    updated_relationship = updated_relationship.replace(f' {class_to_modify}(', f' {new_class_name}(')
-                    updated_relationship = updated_relationship.replace(f'^{class_to_modify} ', f'{new_class_name} ')
-                    updated_relationship = updated_relationship.replace(f' {class_to_modify}$', f' {new_class_name}')
+            # 处理带引号和不带引号的情况
+            if f'"{class_to_modify}"' in updated_relationship:
+                updated_relationship = updated_relationship.replace(f'"{class_to_modify}"', f'"{new_class_name}"')
+            else:
+                # 处理各种可能的关系模式
+                patterns = [
+                    (f'{class_to_modify} ', f'{new_class_name} '),
+                    (f' {class_to_modify} ', f' {new_class_name} '),
+                    (f' {class_to_modify}"', f' {new_class_name}"'),
+                    (f'"{class_to_modify} ', f'"{new_class_name} '),
+                    (f' {class_to_modify}:', f' {new_class_name}:'),
+                    (f'({class_to_modify})', f'({new_class_name})'),
+                    (f' {class_to_modify}$', f' {new_class_name}'),
+                ]
+                for old, new in patterns:
+                    updated_relationship = updated_relationship.replace(old, new)
             
             new_lines.insert(insert_pos, updated_relationship)
         

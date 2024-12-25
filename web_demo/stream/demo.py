@@ -15,7 +15,7 @@ from stream.components.uml_editor import render_uml_editor
 
 # Constants
 DEFAULT_USER_ID = str(uuid.uuid4())
-llm_serve_url = "http://5.181.225.107:19548"
+llm_serve_url = "http://36.50.226.35:58444"
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -155,7 +155,7 @@ async def get_bot_response(messages_history, placeholder):
                                             
                                     elif data.get('status') == 500:
                                         error_msg = data.get('error', '未知错误')
-                                        print(f"服务���错误: {error_msg}")
+                                        print(f"服务错误: {error_msg}")
                                         message_placeholder.markdown(f"服务器错误: {error_msg}")
                                         return None, error_msg
                             except json.JSONDecodeError as e:
@@ -270,7 +270,7 @@ def main():
             transition: all 0.3s ease !important; /* 过渡动画 */
         }
         
-        /* ===== 重置按��样式 ===== */
+        /* ===== 重置按钮样式 ===== */
         /* 次要按钮：固定在右下角，跟主题 */
         button[kind="secondary"] {
             position: fixed !important;
@@ -331,7 +331,7 @@ def main():
             color: var(--primary-color);          /* 使用题色 */
             font-size: 4rem;                      /* 大字体 */
             font-weight: bold;                    /*  */
-            margin-top: 20vh;                     /* 顶部外边距 */
+            margin-top: 20vh;                     /* 顶部外边�� */
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2); /* 文字阴影 */
         }
 
@@ -365,7 +365,7 @@ def main():
         }
 
         
-        /* 导出表单样式 - 统一使用深色主题 */
+        /* 导出表单样式 - 统一使用深���题 */
         .stForm {
             position: fixed;
             top: 50%;
@@ -401,7 +401,7 @@ def main():
             border-color: var(--primary-color) !important;
         }
 
-        /* 按钮悬���效果 */
+        /* 按钮悬停效果 */
         .stForm button:hover {
             background-color: rgb(38, 42, 50) !important;  /* 稍浅一点的深色 */
             border-color: var(--primary-color) !important;
@@ -484,7 +484,7 @@ def main():
                     st.success("对话已成功导出！")
                     st.session_state.show_export_form = False
                 except Exception as e:
-                    st.error(f"导出失败：{str(e)}")
+                    st.error(f"导出失败: {str(e)}")
             
             if st.form_submit_button("取消"):
                 st.session_state.show_export_form = False

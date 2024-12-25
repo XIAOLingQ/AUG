@@ -26,6 +26,7 @@ def render_usecase_diagram_editor(code_key, message_idx, current_code):
             render_add_usecase(code_key, message_idx, current_code)
         with tabs[1]:
             render_delete_usecase(code_key, message_idx, current_code)
+            
     
     # 关系操作
     with st.expander("🔗 关系操作", expanded=False):
@@ -261,28 +262,30 @@ def render_add_usecase_relation(code_key, message_idx, current_code):
         key=f"relation_desc_{code_key}_{timestamp}"
     )
     
-    # 添加按钮
-    if st.button("添加关系", key=f"add_relation_{code_key}_{timestamp}"):
-        if source and target:
-            # 反向查找原始名称
-            source_original = next((k for k, v in name_map.items() if v == source), source)
-            target_original = next((k for k, v in name_map.items() if v == target), target)
-            
-            # 构建关系语句
-            relation = f"{source_original} {relation_type}"
-            if description:
-                relation += f" : {description}"
-            relation += f" {target_original}"
-            
-            # 在@enduml之前插入新关系
-            lines = current_code.split('\n')
-            insert_index = next(i for i, line in enumerate(lines) if '@enduml' in line)
-            lines.insert(insert_index, relation)
-            
-            # 更新代码
-            st.session_state[code_key] = '\n'.join(lines)
-            st.success(f"已添加关系：{relation}")
-            st.rerun()
+    # 添加按钮，调整列比例让按钮靠左
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("添加关系", key=f"add_relation_{code_key}_{timestamp}", type="primary"):
+            if source and target:
+                # 反向查找原始名称
+                source_original = next((k for k, v in name_map.items() if v == source), source)
+                target_original = next((k for k, v in name_map.items() if v == target), target)
+                
+                # 构建关系语句
+                relation = f"{source_original} {relation_type}"
+                if description:
+                    relation += f" : {description}"
+                relation += f" {target_original}"
+                
+                # 在@enduml之前插入新关系
+                lines = current_code.split('\n')
+                insert_index = next(i for i, line in enumerate(lines) if '@enduml' in line)
+                lines.insert(insert_index, relation)
+                
+                # 更新代码
+                st.session_state[code_key] = '\n'.join(lines)
+                st.success(f"已添加关系：{relation}")
+                st.rerun()
 
 def render_delete_usecase_relation(code_key, message_idx, current_code):
     """渲染删除关系界面"""
@@ -324,7 +327,7 @@ def render_delete_usecase_relation(code_key, message_idx, current_code):
                 source = relation_match.group(1).strip('"')
                 target = relation_match.group(2).strip('"')
                 
-                print(f"提取的关系: {source} -> {target}")
+                print(f"取的关系: {source} -> {target}")
                 
                 # 替换用例别名为完整名称
                 display_source = usecase_names.get(source, source)
@@ -383,3 +386,117 @@ def render_delete_usecase_relation(code_key, message_idx, current_code):
             st.rerun()
     else:
         st.info("没有可删除的关系")
+
+def render_modify_usecase(code_key, message_idx, current_code):
+    """渲染修改用例界面"""
+    existing_usecases = get_existing_usecases(current_code)
+    if not existing_usecases:
+        st.info("没有可修改的用例")
+        return
+        
+    usecase_to_modify = st.selectbox(
+        "选择要修改的用例",
+        options=existing_usecases,
+        key=f"modify_usecase_{message_idx}"
+    )
+    
+    new_usecase_name = st.text_input("新用例名称", value=usecase_to_modify, key=f"new_usecase_name_{message_idx}")
+    description = st.text_area(
+        "描述 (可选)", 
+        height=100,
+        key=f"modify_usecase_desc_{message_idx}"
+    )
+    
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("保存修改", key=f"save_modify_usecase_{message_idx}", type="primary"):
+            if not new_usecase_name:
+                st.error("请输入用例名称")
+                return
+                
+            if new_usecase_name != usecase_to_modify and new_usecase_name in existing_usecases:
+                st.error(f"用例名称 '{new_usecase_name}' 已存在")
+                return
+            
+            lines = current_code.split('\n')
+            new_lines = []
+            
+            # 查找原始用例定义和别名
+            old_alias = None
+            old_as_line = None
+            for line in lines:
+                line_stripped = line.strip()
+                if line_stripped.startswith('usecase '):
+                    if f'"{usecase_to_modify}"' in line_stripped:
+                        if ' as ' in line_stripped:
+                            old_as_line = line_stripped
+                            old_alias = line_stripped.split(' as ')[1].strip()
+            
+            # 如果有旧的别名，创建新的别名
+            new_alias = None
+            if old_alias:
+                new_alias = old_alias  # 保持原有的别名
+            
+            # 处理每一行
+            for line in lines:
+                line_stripped = line.strip()
+                updated_line = line_stripped
+                
+                # 处理用例定义行
+                if line_stripped.startswith('usecase '):
+                    if f'"{usecase_to_modify}"' in line_stripped:
+                        if old_as_line:
+                            # 保持as结构，但更新名称
+                            updated_line = f'usecase "{new_usecase_name}" as {old_alias}'
+                        else:
+                            updated_line = f'usecase "{new_usecase_name}"'
+                        
+                        # 添加描述（如果有）
+                        new_lines.append(updated_line)
+                        if description.strip():
+                            new_lines.append(f'note right of {old_alias or new_usecase_name}')
+                            new_lines.append(f'  {description}')
+                            new_lines.append('end note')
+                        continue
+                
+                # 处理关系行
+                if any(rel in line_stripped for rel in ['-->', '.>', '--|>', '-', '--']):
+                    # 处理带引号的情况
+                    if f'"{usecase_to_modify}"' in updated_line:
+                        updated_line = updated_line.replace(f'"{usecase_to_modify}"', f'"{new_usecase_name}"')
+                    
+                    # 处理不带引号的情况
+                    if old_alias:
+                        # 保持原有的别名
+                        continue
+                    else:
+                        # 处理原始名称在关系中的各种位置
+                        patterns = [
+                            (f'{usecase_to_modify} --', f'{new_usecase_name} --'),
+                            (f'-- {usecase_to_modify}', f'-- {new_usecase_name}'),
+                            (f'{usecase_to_modify} :', f'{new_usecase_name} :'),
+                            (f' {usecase_to_modify} ', f' {new_usecase_name} '),
+                            (f'"{usecase_to_modify}"', f'"{new_usecase_name}"'),
+                            (f'{usecase_to_modify}--', f'{new_usecase_name}--'),
+                            (f'--{usecase_to_modify}', f'--{new_usecase_name}'),
+                            (f'{usecase_to_modify}->', f'{new_usecase_name}->'),
+                            (f'->{usecase_to_modify}', f'->{new_usecase_name}'),
+                            (f'{usecase_to_modify} ->', f'{new_usecase_name} ->'),
+                            (f'-> {usecase_to_modify}', f'-> {new_usecase_name}'),
+                        ]
+                        for old_pattern, new_pattern in patterns:
+                            updated_line = updated_line.replace(old_pattern, new_pattern)
+                
+                # 处理注释块
+                if line_stripped.startswith('note '):
+                    if old_alias and f'of {old_alias}' in updated_line:
+                        # 保持原有的别名
+                        continue
+                    elif f'of {usecase_to_modify}' in updated_line:
+                        updated_line = updated_line.replace(f'of {usecase_to_modify}', f'of {new_usecase_name}')
+                
+                new_lines.append(updated_line)
+            
+            st.session_state[code_key] = '\n'.join(new_lines)
+            st.success(f"用例 '{usecase_to_modify}' 已修改为 '{new_usecase_name}'")
+            st.rerun()
