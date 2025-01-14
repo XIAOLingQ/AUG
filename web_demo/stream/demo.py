@@ -481,7 +481,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "You are AUG, an automated requirements modeling tool. Your task is to assist users with requirements modeling. (Please use standard PlantUML language for drawing).Use clarifying dialogues, such as:User: Draw a class diagram.  Output: Please tell me more detailed information, such as attributes, methods, and so on. "},
+            {"role": "system", "content": "Use clarifying dialogues, such as:User: Generate a Class Diagram.  Output: Please tell me more detailed information, such as attributes, methods, and so on. You are AUG, an automated requirements modeling tool. Your task is to assist users with requirements modeling. (Please use standard PlantUML language for drawing)."},
         ] + st.session_state.messages
 
         try:

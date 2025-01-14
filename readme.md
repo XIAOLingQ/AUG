@@ -8,11 +8,11 @@ Requirements modeling is essential in software development, yet manual UML model
 
 <video src="https://private-user-images.githubusercontent.com/143795037/377506500-a2f4c5bb-cb06-439d-b839-29cbdd72e88d.mp4?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MjkxNzUyNTAsIm5iZiI6MTcyOTE3NDk1MCwicGF0aCI6Ii8xNDM3OTUwMzcvMzc3NTA2NTAwLWEyZjRjNWJiLWNiMDYtNDM5ZC1iODM5LTI5Y2JkZDcyZTg4ZC5tcDQ_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjQxMDE3JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI0MTAxN1QxNDIyMzBaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1iNDQ5MTlhMDgzOGE4MmQ3ZGNkZjVhMDIzNmM4MjVmOTUyNzQyYWZhNzA1OWI0ODExMWQxMmYyOTVkMTBjOWE1JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.E3cOSN_w0QwRyAh_eNfK0GhTKrNbqpJRv9uU5GcQ_Oc" data-canonical-src="https://private-user-images.githubusercontent.com/143795037/377506500-a2f4c5bb-cb06-439d-b839-29cbdd72e88d.mp4?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MjkxNzUyNTAsIm5iZiI6MTcyOTE3NDk1MCwicGF0aCI6Ii8xNDM3OTUwMzcvMzc3NTA2NTAwLWEyZjRjNWJiLWNiMDYtNDM5ZC1iODM5LTI5Y2JkZDcyZTg4ZC5tcDQ_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjQxMDE3JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI0MTAxN1QxNDIyMzBaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1iNDQ5MTlhMDgzOGE4MmQ3ZGNkZjVhMDIzNmM4MjVmOTUyNzQyYWZhNzA1OWI0ODExMWQxMmYyOTVkMTBjOWE1JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.E3cOSN_w0QwRyAh_eNfK0GhTKrNbqpJRv9uU5GcQ_Oc" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px; min-height: 200px"></video>
 
-## 使用方法
+## Quick use
 
-### 模型部署
+### Model deployment
 
-可以从我们的huggingface仓库中下载我们的预训练权重模型将他们放入./models文件夹中，我们提供了API部署方式的代码以符合我们项目的需要；如果需要终端交互可以使用官网提供的方法。
+You can download our pre-training weights from our huggingface repository.
 
 ```1
 cd llm_serve
@@ -20,43 +20,37 @@ pip install -r requirements.txt
 python api.py
 ```
 
-### PlantUML服务器部署
+Modify the model path from line 23 of the python file
+
+### PlantUML server deployment
 
 ```puml
 cd puml_serve
-java -jar plantuml.jar -picoweb:8888  //更换运行的端口
+java -jar plantuml.jar -picoweb:8888 
 ```
 
-### web部署
-
-我们的前端使用Vue，后端使用Flask快速开发。
-
-#### 前端
+### Web deployment
 
 ```client
-cd web_demo/client
-npm install
-npm run serve
+cd web_demo/stream
+pip install -r requirements.txt
+streamlit run dmeo.py
 ```
 
-如果要修改请求后端的url，修改文件./web_demo/client/vue.config.js 的第六行
+To modify the URL for requesting LLM, update line 18 in `demo.py`.
 
 ```vue.config.js
-target: 'http://27.25.158.240:21561', // 你的后端接口地址
-//替换为你的后端地址
+llm_serve_url = "http://36.50.226.35:17169"
 ```
 
-#### 后端
+To modify the URL for requesting the PlantUML server, update line 7 in `./web_demo/stream/utils/uml.py`.
 
-```serve
-cd web_demo/server
-pip install -r requirements.txt
-python app.py
+```
+# 初始化 PlantUML
+plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
 ```
 
-如果要修改请求大模型的地址或请求plantUML服务器的地址，修改文件app.py的第17行和第18行。
-
-## 关于我们
+## About Us
 
 <table>
   <tr>
@@ -64,8 +58,8 @@ python app.py
       <img src="./assets/about/lj.png">
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
-      武汉纺织大学 卢佳<br>
-      Email: <a href="mailto:2204240222@mail.wtu.edu.cn">2204240222@mail.wtu.edu.cn</a>
+      Wuhan Textile University Jia Lu<br>
+      Email: <a href="mailto:18713290623@163.com">18713290623@163.com</a>
     </td>
   </tr>
 </table>
@@ -75,8 +69,8 @@ python app.py
       <img src="./assets/about/spl.png">
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
-      武汉纺织大学 孙培伶<br>
-      Email: <a href="mailto:2204240513@mail.wtu.edu.cn">2204240513@mail.wtu.edu.cn</a>
+      Wuhan Textile University Peiling Sun<br>
+      Email: <a href="mailto:15347274546@163.com">15347274546@163.com</a>
     </td>
   </tr>
 </table>
@@ -86,18 +80,7 @@ python app.py
       <img src="./assets/about/lsy.png">
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
-      武汉纺织大学 李思雨<br>
-      Email: <a href="mailto:2204240106@mail.wtu.edu.cn">2204240106@mail.wtu.edu.cn</a>
-    </td>
-  </tr>
-</table>
-<table>
-  <tr>
-    <td style="width: 30%;">
-      <img src="./assets/about/zsy.png">
-    </td>
-    <td style="vertical-align: middle; padding-left: 10px;">
-      武汉纺织大学 朱诗雨<br>
+      Wuhan Textile University Shiyu Zhu<br>
       Email: <a href="mailto:1303334710@qq.com">1303334710@qq.com</a>
     </td>
   </tr>
@@ -108,8 +91,8 @@ python app.py
       <img src="./assets/about/zsy.png">
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
-      武汉纺织大学 袁瑛凯<br>
-      Email: <a href="mailto:3403613474@qq.com">3403613474@qq.com</a>
+      Wuhan University Peng Liang<br>
+      Email: <a href="mailto:liangp@whu.edu.cn">liangp@whu.edu.cn</a>
     </td>
   </tr>
 </table>
@@ -119,8 +102,41 @@ python app.py
       <img src="./assets/about/zsy.png">
     </td>
     <td style="vertical-align: middle; padding-left: 10px;">
-      武汉纺织大学 陈億<br>
-      Email: <a href="mailto:3458981693@qq.com">3458981693@qq.com</a>
+      Wuhan Textile University Yingkai Yuan<br>
+      Email: <a href="mailto:15623088651@163.com">15623088651@163.com</a>
+    </td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td style="width: 30%;">
+      <img src="./assets/about/zsy.png">
+    </td>
+    <td style="vertical-align: middle; padding-left: 10px;">
+      Wuhan Textile University Xuanxuan Liang<br>
+      Email: <a href="mailto:lxx2047734741@outlook.com">lxx2047734741@outlook.com</a>
+    </td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td style="width: 30%;">
+      <img src="./assets/about/zsy.png">
+    </td>
+    <td style="vertical-align: middle; padding-left: 10px;">
+      Wuhan Textile University Yimiao Zhang<br>
+      Email: <a href="mailto:15632891936@163.com">15632891936@163.com</a>
+    </td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td style="width: 30%;">
+      <img src="./assets/about/zsy.png">
+    </td>
+    <td style="vertical-align: middle; padding-left: 10px;">
+      Wuhan Textile University Bangchao Wang<br>
+      Email: <a href="mailto:wangbc@whu.edu.cn">wangbc@whu.edu.cn</a>
     </td>
   </tr>
 </table>
