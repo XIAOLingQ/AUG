@@ -15,7 +15,7 @@ from stream.components.uml_editor import render_uml_editor
 
 # Constants
 DEFAULT_USER_ID = str(uuid.uuid4())
-llm_serve_url = "http://36.50.226.35:58444"
+llm_serve_url = "http://36.50.226.35:17169"
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -37,7 +37,7 @@ icon_path = os.path.join(os.path.dirname(__file__), "static", "images", "favicon
 
 # Page config
 st.set_page_config(
-    page_title="AUG - Automantic UML Generator", 
+    page_title="AUG - Automated UML Generation", 
     page_icon=icon_path,
     layout="wide"
 )
@@ -68,7 +68,7 @@ def reset_chat():
         ]) or "code_key" in key:  # 特别检查包含 code_key 的键
             keys_to_delete.append(key)
     
-    # 删除收集到的键
+    # 删除收到的键
     for key in keys_to_delete:
         if key in st.session_state:
             del st.session_state[key]
@@ -179,13 +179,14 @@ async def get_bot_response(messages_history, placeholder):
 def main():
     # 在 header 区域添加按钮
     with st.container():
-        st.button("提交对话", key="submit_chat_button", type="primary", 
+        st.button("Submit Chat", key="submit_chat_button", type="primary", 
                  on_click=lambda: st.session_state.update({"show_export_form": True}))
     
-    # 更新按钮样式
+
+    # 添加样式
     st.markdown("""
         <style>
-        /* 移除原来的按钮固定定位样式 */
+
         button[data-testid="submit_chat_button"] {
             position: relative !important;
             top: auto !important;
@@ -197,27 +198,9 @@ def main():
             border-radius: 4px !important;
             margin-top: 1rem !important;
         }
-        
-        /* 其他样式保持不变... */
-        </style>
-    """, unsafe_allow_html=True)
+                        
 
-    # 添加样式
-    st.markdown("""
-        <style>
-        /* 提交对话按钮样式 */
-        button[data-testid="submit_chat_button"] {
-            position: fixed !important;
-            top: 16px !important;
-            left: 16px !important;
-            z-index: 999 !important;
-            margin: 0 !important;
-            width: 120px !important;
-            background-color: var(--primary-color) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 4px !important;
-        }
+        
 
         /* 提交对话按钮悬停效果 */
         button[data-testid="submit_chat_button"]:hover {
@@ -264,7 +247,7 @@ def main():
 
         /* 发送按钮容器 */
         div[data-testid="stChatInput"] button {
-            right: 140px !important;           /* 与重置按钮保持距离 */
+            right: 140px !important;           /* 与重置按钮保��距离 */
             background-color: var(--primary-color) !important; /* 使用主题色 */
             border-radius: 4px !important;     /* 圆角 */
             transition: all 0.3s ease !important; /* 过渡动画 */
@@ -296,7 +279,7 @@ def main():
         /* 在小屏幕上调整布局 */
         @media (max-width: 768px) {
             div[data-testid="stChatInput"] {
-                width: calc(100% - 120px) !important; /* 减小输入框宽度 */
+                width: calc(100% - 120px) !important; /* 减小输入框��度 */
                 max-width: calc(100% - 120px) !important;
             }
             
@@ -328,10 +311,10 @@ def main():
         .big-title {
             text-align: center;                   /* 居中对齐 */
             padding: 2rem 0;                      /* 上下内边距 */
-            color: var(--primary-color);          /* 使用题色 */
+            color: var(--primary-color);          /* 使用主题色 */
             font-size: 4rem;                      /* 大字体 */
             font-weight: bold;                    /*  */
-            margin-top: 20vh;                     /* 顶部外边�� */
+            margin-top: 17vh;                     /* 顶部外边距 */
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2); /* 文字阴影 */
         }
 
@@ -365,7 +348,7 @@ def main():
         }
 
         
-        /* 导出表单样式 - 统一使用深���题 */
+        /* 导出表单样式 - 统一使用深色题 */
         .stForm {
             position: fixed;
             top: 50%;
@@ -397,7 +380,7 @@ def main():
         /* 表单按钮样式 */
         .stForm button {
             background-color: rgb(28, 32, 40) !important;  /* 深色按钮背景 */
-            color: rgb(255, 255, 255) !important;  /* 白色文字 */
+            color: rgb(255, 255, 255) !important;  /* 白��文字 */
             border-color: var(--primary-color) !important;
         }
 
@@ -418,7 +401,7 @@ def main():
     if not st.session_state.messages:
         st.markdown("""
             <div class="big-title">AUG</div>
-            <div class="subtitle">Automantic UML Generator</div>
+            <div class="subtitle">Automated UML Generation</div>
         """, unsafe_allow_html=True)
     else:
         # 显示所历史消息
@@ -427,18 +410,18 @@ def main():
 
     # 创建固定在底部的输入区域
     with st.container():
-        prompt = st.chat_input("在这里输入您的消息...")
-        if st.button("重置聊天", key="reset_button", type="secondary", on_click=reset_chat):
+        prompt = st.chat_input("Input your message here...")
+        if st.button("Reset Chat", key="reset_button", type="secondary", on_click=reset_chat):
             pass
 
     # 添加导出表单
     if st.session_state.show_export_form:
         with st.form(key="export_form"):
-            st.subheader("导出对话")
-            instruction = st.text_area("任务描述", help="请描述这个对话的任务目标")
-            system = st.text_area("系统提示词", help="请输入系统提示词")
+            st.subheader("Export Chat")
+            instruction = st.text_area("Task Description", help="Please describe the task goal of this conversation")
+            system = st.text_area("System Prompt", help="Please enter the system prompt")
             
-            if st.form_submit_button("确认导出"):
+            if st.form_submit_button("Confirm Export"):
                 try:
                     # 读取现有数据以确定下一个ID
                     export_file = f"export_{datetime.now().strftime('%Y%m%d')}.json"
@@ -481,12 +464,12 @@ def main():
                     with open(export_file, 'w', encoding='utf-8') as f:
                         json.dump(existing_data, f, ensure_ascii=False, indent=4)
                     
-                    st.success("对话已成功导出！")
+                    st.success("Chat has been exported successfully!")
                     st.session_state.show_export_form = False
                 except Exception as e:
                     st.error(f"导出失败: {str(e)}")
             
-            if st.form_submit_button("取消"):
+            if st.form_submit_button("Cancel"):
                 st.session_state.show_export_form = False
 
     if prompt:
@@ -498,7 +481,7 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         messages_history = [
-            {"role": "system", "content": "你是自动化需求建模工具AUG，你的任务是协助用户进行需求建模。(请使用标准PlantUML语言进行绘制)"},
+            {"role": "system", "content": "You are AUG, an automated requirements modeling tool. Your task is to assist users with requirements modeling. (Please use standard PlantUML language for drawing)"},
         ] + st.session_state.messages
 
         try:

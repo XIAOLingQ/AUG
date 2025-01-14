@@ -63,21 +63,21 @@ def render_uml_editor(code_key, message_idx):
     edit_col, preview_col = st.columns([0.5, 0.5])
     
     with edit_col:
-        st.subheader("UML 编辑器")
+        st.subheader("UML Editor")
         
         edit_mode_key = f"edit_mode_{code_key}_{message_idx}"
         edit_mode = st.radio(
-            "编辑模式",
-            ["可视化编辑", "代码编辑"],
+            "Edit Mode",
+            ["Visual Edit", "Code Edit"],
             horizontal=True,
             key=edit_mode_key
         )
         
-        if edit_mode == "代码编辑":
+        if edit_mode == "Code Edit":
             # 代码编辑模式
             text_area_key = f"text_area_{code_key}_{message_idx}"
             new_code = st.text_area(
-                "PlantUML 代码", 
+                "PlantUML Code", 
                 current_code, 
                 height=400,
                 key=text_area_key,
@@ -101,13 +101,13 @@ def render_uml_editor(code_key, message_idx):
             elif diagram_type == "sequence":
                 render_sequence_diagram_editor(code_key, message_idx, current_code)
             else:
-                st.warning("未识别的图表类型")
+                st.warning("Unrecognized diagram type")
     
     # 预览列
     with preview_col:
-        st.subheader("预览")
+        st.subheader("Preview")
         # 显示当前的 PlantUML 代码
-        with st.expander("📝 查看 PlantUML 代码", expanded=False):
+        with st.expander("📝 View PlantUML Code", expanded=False):
             st.code(current_code, language='java')
             
         # 显示图像预览
@@ -121,10 +121,10 @@ def render_uml_editor(code_key, message_idx):
             <div style="text-align: center;">
                 <a href="data:image/{diagram_data["format"]};base64,{diagram_data["data"]}" 
                    download="{download_filename}">
-                    <button class="download-button">下载图表</button>
+                    <button class="download-button">Download Diagram</button>
                 </a>
             </div>
             '''
             st.markdown(download_link, unsafe_allow_html=True)
         else:
-            st.error("生成UML图失败，请检查代码语法")
+            st.error("Failed to generate UML diagram, please check the code syntax")
