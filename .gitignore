@@ -1,3 +1,13 @@
-
-llm-chat-demo/
-/llm-chat-demo/
+web_demo/client/node_modules/
+.idea/
+1.json
+2.json
+3.json
+ce.json
+__pycache__/
+ferrari2017.pdf
+*.xlsx
+ce.py
+ce2.py
+.vscode/
+dataset/
