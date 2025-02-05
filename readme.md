@@ -140,7 +140,3 @@ plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
     </td>
   </tr>
 </table>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=XIAOLingQ/AUG&type=Date)](https://star-history.com/#XIAOLingQ/AUG&Date)
