@@ -3,9 +3,6 @@
 <div align="center">
     <img src="./assets/框架图_页面_3.jpg" alt="AUG Framework">
     <p>
-        <a href="https://github.com/XIAOLingQ/AUG/blob/main/LICENSE">
-            <img alt="License" src="https://img.shields.io/github/license/XIAOLingQ/AUG.svg?color=blue">
-        </a>
         <a href="https://huggingface.co/afedf/AUG">
             <img alt="Hugging Face" src="https://img.shields.io/badge/🤗%20Hugging%20Face-AUG-blue">
         </a>
