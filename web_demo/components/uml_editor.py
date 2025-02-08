@@ -1,8 +1,8 @@
 import streamlit as st
-from stream.utils.uml import get_uml_diagram, get_diagram_type
-from stream.components.editors.class_editor import render_class_diagram_editor
-from stream.components.editors.usecase_editor import render_usecase_diagram_editor
-from stream.components.editors.sequence_editor import render_sequence_diagram_editor
+from utils.uml import get_uml_diagram, get_diagram_type
+from components.editors.class_editor import render_class_diagram_editor
+from components.editors.usecase_editor import render_usecase_diagram_editor
+from components.editors.sequence_editor import render_sequence_diagram_editor
 
 def render_uml_editor(code_key, message_idx):
     """渲染 UML 编辑器组件"""

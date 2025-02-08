@@ -1,5 +1,5 @@
 import streamlit as st
-from stream.utils.uml import (
+from utils.uml import (
     get_existing_classes,
     get_name_mapping,
 )

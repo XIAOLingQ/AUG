@@ -1,5 +1,5 @@
 import streamlit as st
-from stream.utils.uml import get_uml_diagram, create_usecase_template, get_existing_actors, get_existing_usecases, get_name_mapping
+from utils.uml import get_uml_diagram, create_usecase_template, get_existing_actors, get_existing_usecases, get_name_mapping
 import re
 import time
 

@@ -1,5 +1,5 @@
 import streamlit as st
-from stream.utils.uml import (
+from utils.uml import (
     get_uml_diagram, 
     create_sequence_template, 
     get_existing_participants,
