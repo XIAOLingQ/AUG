@@ -10,4 +10,9 @@ ferrari2017.pdf
 ce.py
 ce2.py
 .vscode/
-dataset/
+dataset/.idea
+dataset/.venv
+dataset/分片
+dataset/实验
+dataset/微调
+dataset/xun
