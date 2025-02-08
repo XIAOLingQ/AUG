@@ -26,13 +26,13 @@ Modify the model path from line 23 of the python file
 
 ```puml
 cd puml_serve
-java -jar plantuml.jar -picoweb:8888 
+java -jar plantuml.jar -picoweb:8888
 ```
 
 ### Web deployment
 
 ```client
-cd web_demo/stream
+cd web_demo
 pip install -r requirements.txt
 streamlit run dmeo.py
 ```
@@ -46,47 +46,9 @@ llm_serve_url = "http://36.50.226.35:17169"
 To modify the URL for requesting the PlantUML server, update line 7 in `./web_demo/stream/utils/uml.py`.
 
 ```
-# 初始化 PlantUML
 plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')
 ```
 
-## Project Structure
-
-```
-AUG/
-├── assets/                    # Project images and resources
-├── llm_serve/                # Large Language Model service
-│   ├── api.py               # API implementation
-│   └── requirements.txt     # LLM service dependencies
-├── puml_serve/               # PlantUML server
-│   └── plantuml.jar        # PlantUML JAR file
-├── web_demo/                 # Web application
-│   ├── components/         # UI components
-│   ├── static/            # Static resources
-│   ├── utils/             # Utility functions
-│   ├── demo.py           # Main application file
-│   └── requirements.txt  # Web application dependencies
-├── result/                   # Evaluation results and metrics
-├── .gitattributes           # Git attributes configuration
-└── readme.md                # Project documentation
-```
-
-### Directory Description
-
-- `assets/`: Contains project images, diagrams, and other media resources
-- `llm_serve/`: Houses the Large Language Model service implementation
-  - Includes API endpoints and model integration
-  - Contains dependencies specific to the LLM service
-- `puml_serve/`: PlantUML server implementation
-  - Contains the PlantUML JAR file for diagram generation
-- `web_demo/`: Web application implementation
-  - `components/`: Reusable UI components
-  - `static/`: Static assets like CSS, images
-  - `utils/`: Helper functions and utilities
-  - `demo.py`: Main application entry point
-- `result/`: Stores evaluation results and performance metrics
-- `.gitattributes`: Configures Git attributes for the repository
-- `readme.md`: Main project documentation
 
 ## About Us
 
@@ -178,3 +140,4 @@ AUG/
     </td>
   </tr>
 </table>
+
