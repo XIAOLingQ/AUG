@@ -1,4 +1,4 @@
-# AUG - Automated UML Model Generation
+# AUG - Automated UML Generation
 
 <div align="center">
     <img src="./assets/框架图_页面_3.jpg" alt="AUG Framework">
