@@ -4,7 +4,7 @@
     <img src="./assets/框架图_页面_3.jpg" alt="AUG Framework">
     <p>
         <a href="https://huggingface.co/XIAOLQ/GLM_UML">
-            <img alt="Hugging Face" src="https://img.shields.io/badge/🤗%20Hugging%20Face-AUG-blue">
+            <img alt="Hugging Face" src="https://img.shields.io/badge/🤗%20Hugging%20Face-GLM_UML-blue">
         </a>
         <a href="https://youtu.be/kHbCPK6kOag">
             <img alt="Demo Video" src="https://img.shields.io/badge/Demo-Video-red">
