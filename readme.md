@@ -23,14 +23,21 @@ AUG (Automated UML Model Generation) is an innovative tool that leverages the GL
 - ✏️ **Online Editing**: Built-in UML diagram editor
 - 📈 **Quality Feedback**: Automated evaluation and suggestions
 - 🎯 **High Accuracy**: Superior performance metrics compared to existing solutions
+- 🤗 Pre-trained Models: The model GLM\_UML fine-tuned based on Chat\_GLM
+- 🧳 Dataset: Create a dataset comprising 10,000 UML diagrams, including 1,000 ground truth samples
 
 ### Performance Metrics
 
-- Precision: 78.68%
-- Recall: 67.37%
-- F1 Score: 72.59%
 
-*Note: Our system demonstrates improved recall and F1 scores compared to ChatGPT 4.0*
+|    LLMs    | Precision | Recall | F1-score |
+| :---------: | :-------: | :----: | :------: |
+|   GLM_UML   |  0.7868  | 0.6737 |  0.7259  |
+|   GLM4-9B   |   0.77   | 0.6275 |  0.6914  |
+| Qwen2.5-7B |  0.7755  | 0.6045 |  0.6794  |
+| LLAMA3.0-8B |   0.75   | 0.5723 |  0.6492  |
+|  ChatGPT4o  |  0.8165  | 0.5985 |  0.6907  |
+
+*Note: Our pre-trained models improved recall and F1 scores compared to ChatGPT 4.0*
 
 ## 🚀 Quick Start
 
