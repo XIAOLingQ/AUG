@@ -14,7 +14,7 @@
 
 ## 📖 Overview
 
-AUG (Automated UML Model Generation) is an innovative tool that leverages the GLM4-9B model to automate UML diagram generation from natural language requirements. Our system achieves state-of-the-art performance in generating class diagrams, use case diagrams, and sequence diagrams.
+AUG (Automated UML Model Generation) is an innovative tool that leverages the GLM_UML model to automate UML diagram generation from natural language requirements. Our system achieves state-of-the-art performance in generating class diagrams, use case diagrams, and sequence diagrams.
 
 ### Key Features
 
