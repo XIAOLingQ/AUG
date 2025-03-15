@@ -3,8 +3,8 @@
 <div align="center">
     <img src="./assets/框架图_页面_3.jpg" alt="AUG Framework">
     <p>
-        <a href="https://huggingface.co/XIAOLQ/GLM_UML">
-            <img alt="Hugging Face" src="https://img.shields.io/badge/🤗%20Hugging%20Face-GLM_UML-blue">
+        <a href="https://huggingface.co/XIAOLQ/GLM4UML">
+            <img alt="Hugging Face" src="https://img.shields.io/badge/🤗%20Hugging%20Face-GLM4UML-blue">
         </a>
         <a href="https://youtu.be/kHbCPK6kOag">
             <img alt="Demo Video" src="https://img.shields.io/badge/Demo-Video-red">
@@ -23,8 +23,8 @@ AUG (Automated UML Model Generation) is an innovative tool that leverages the GL
 - ✏️ **Online Editing**: Built-in UML diagram editor
 - 📈 **Quality Feedback**: Automated evaluation and suggestions
 - 🎯 **High Accuracy**: Superior performance metrics compared to existing solutions
-- 🤗 Pre-trained Models: The model GLM\_UML fine-tuned based on Chat\_GLM
-- 🧳 Dataset: Create a dataset comprising 10,000 UML diagrams, including 1,000 ground truth samples
+- 🤗 **Pre-trained Models**: The model GLM4UML fine-tuned based on Chat\_GLM
+- 🧳 **Dataset**: Create a dataset comprising 10,000 UML diagrams, including 1,000 ground truth samples
 
 ### Performance Metrics
 
@@ -99,7 +99,7 @@ plantuml = PlantUML(url='http://www.plantuml.com/plantuml/png/')  # Update with 
 
 ## 📚 Resources
 
-- [📦 Model Weights (Hugging Face)](https://huggingface.co/afedf/AUG)
+- [📦 Model Weights (Hugging Face)](https://huggingface.co/XIAOLQ/GLM4UML)
 - [📹 Demo Video](https://youtu.be/kHbCPK6kOag)
 - [💻 Source Code](https://github.com/XIAOLingQ/AUG)
 
