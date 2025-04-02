@@ -31,7 +31,7 @@ AUG (Automated UML Model Generation) is an innovative tool that leverages the GL
 
 |    LLMs    | Precision | Recall | F1-score |
 | :---------: | :-------: | :----: | :------: |
-|   GLM_UML   |  0.7868  | 0.6737 |  0.7259  |
+|   GLM4UML   |  0.7868  | 0.6737 |  0.7259  |
 |   GLM4-9B   |   0.77   | 0.6275 |  0.6914  |
 | Qwen2.5-7B |  0.7755  | 0.6045 |  0.6794  |
 | LLAMA3.0-8B |   0.75   | 0.5723 |  0.6492  |
